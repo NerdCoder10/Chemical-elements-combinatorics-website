@@ -1,6 +1,6 @@
 /* UI for the Element Combinator. Depends on elements.js, isotopes.js, thermo.js, engine.js. */
 (function () {
-  const MAX_TRAY = 4;
+  const MAX_TRAY = 7; // the DFT data contains compounds of up to 7 elements
   const state = { tray: [], T: 298, infoSym: null, allIsotopes: false };
   const $ = (sel) => document.querySelector(sel);
 
@@ -203,12 +203,22 @@
     estimated: ['q-estimated', 'Estimated'],
     none: ['q-none', 'No reaction'],
     nuclear: ['q-nuclear', 'Nuclear'],
+    dft: ['q-dft', 'Computed (DFT)'],
   };
+
+  const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
+
+  function stabilityBadge(e) {
+    if (e.fe >= 0) return '<span class="badge st-unstable">does not form</span>';
+    if (e.ehull <= Theory.STABLE) return `<span class="badge st-stable">predicted stable</span>${e.known ? '<span class="badge st-known">observed</span>' : '<span class="badge st-new" title="No experimentally determined structure (ICSD) is linked to it">no experimental record</span>'}`;
+    if (e.ehull <= Theory.METASTABLE) return '<span class="badge st-meta">metastable</span>';
+    return '<span class="badge st-unstable">unstable</span>';
+  }
 
   function reactionHTML(r, T) {
     const [qc, ql] = QUALITY[r.quality] || QUALITY.estimated;
     const G = r.kind === 'nuclear' ? r.dH : Engine.gibbs(r.dH, r.dS, T);
-    const hEst = r.hEstimated ? '<div class="est">estimate</div>' : '';
+    const hEst = r.hEstimated ? '<div class="est">estimate</div>' : r.dft ? '<div class="est">DFT, ≈ 0 K</div>' : '';
     const sEst = r.sEstimated || (r.quality === 'estimated' && r.dS != null) ? '<div class="est">estimate</div>' : '';
     const dSText = r.kind === 'nuclear' ? 'n/a' : fmtNum(r.dS, 1);
     const dHText = r.dH == null ? 'not tabulated' : fmtNum(r.dH, 1);
@@ -218,7 +228,7 @@
     }
     return `
       <article class="rx">
-        <div class="rx-top"><div class="rx-name">${esc(r.name)}</div><span class="badge ${qc}">${ql}</span></div>
+        <div class="rx-top"><div class="rx-name">${r.dft ? `${fmtFormula(r.dft.formula)} <span class="muted">(${esc(r.dft.spg)})</span>` : esc(r.name)}</div><span class="badges">${r.dft ? stabilityBadge(r.dft) : ''}<span class="badge ${qc}">${ql}</span></span></div>
         <div class="eq">${equationHTML(r)}</div>
         <div class="thermo">
           <div><div class="lbl">ΔH°</div><div class="val ${signClass(r.dH)}">${dHText}</div><div class="unit">kJ</div>${hEst}</div>
@@ -228,6 +238,7 @@
         <p class="verdict">${verdict(r, T)}</p>
         ${perMol}
         ${r.note ? `<p class="rx-note">${esc(r.note)}</p>` : ''}
+        ${r.dft ? `<p class="rx-note"><a href="${JARVIS_URL(r.dft.jid)}" target="_blank" rel="noopener">View the computed crystal structure (${r.dft.jid})</a></p>` : ''}
       </article>`;
   }
 
@@ -345,7 +356,8 @@
       `<span><strong>118</strong> elements</span>`,
       `<span><strong>${NUCLIDE_COUNT.toLocaleString()}</strong> known isotopes (${nStable} stable)</span>`,
       `<span><strong>${COMPOUNDS.length}</strong> tabulated compounds</span>`,
-      `<span><strong>7,021</strong> element pairs: <strong>${counts.data}</strong> with data, <strong>${counts.predicted}</strong> predicted, <strong>${counts.alloy}</strong> metal–metal, <strong>${counts.noble}</strong> noble-gas</span>`,
+      `<span><strong>${Theory.SETS.filter((x) => x.size > 1).length.toLocaleString()}</strong> combinations computed theoretically (${Theory.ENTRIES.length.toLocaleString()} compounds)</span>`,
+      `<span><strong>7,021</strong> element pairs: <strong>${counts.data}</strong> measured, <strong>${(counts.dft || 0) + (counts['dft-none'] || 0)}</strong> computed (DFT), <strong>${counts.predicted || 0}</strong> rule-based estimates</span>`,
     ].join('');
     return counts;
   }
@@ -353,7 +365,9 @@
   /* ---------- combination map ---------- */
 
   const MAP_CLASSES = [
-    ['data', 'Tabulated compound(s)'],
+    ['data', 'Measured compound(s)'],
+    ['dft', 'DFT: compound predicted to form'],
+    ['dft-none', 'DFT: computed, no stable compound'],
     ['predicted', 'Predicted compound (estimate)'],
     ['alloy', 'Metal + metal → alloy'],
     ['noble', 'Noble gas → no reaction'],
@@ -495,6 +509,174 @@
     renderCompounds();
   }
 
+  /* ---------- theory explorer ---------- */
+
+  const STATUS_LABEL = { stable: 'Forms a stable compound', metastable: 'Only metastable compounds', unstable: 'No stable compound' };
+  const explorer = { rows: [], shown: 100 };
+
+  function insightsHTML() {
+    const sets = Theory.SETS.filter((x) => x.size > 1);
+    const bySize = {};
+    sets.forEach((x) => {
+      const b = (bySize[x.size] = bySize[x.size] || { n: 0, stable: 0 });
+      b.n += 1;
+      if (x.status === 'stable') b.stable += 1;
+    });
+    const stable = Theory.ENTRIES.filter((e) => e.fe < 0 && e.ehull <= Theory.STABLE);
+    const hypo = stable.filter((e) => !e.known);
+    const known = Theory.ENTRIES.filter((e) => e.known);
+    const knownOnHull = known.filter((e) => e.ehull <= Theory.STABLE).length;
+    const knownNear = known.filter((e) => e.ehull <= Theory.NEAR).length;
+
+    // Validation of DFT ΔHf against the measured values in this site's own database.
+    const val = [];
+    COMPOUNDS.filter((c) => c.phase === 's' && c.formula !== 'D2O').forEach((c) => {
+      const counts = Engine.countsOf(c.formula);
+      const atoms = Object.values(counts).reduce((a, b) => a + b, 0);
+      const ratio = (cnt) => Object.keys(cnt).sort().map((k) => k + cnt[k] / atoms).join();
+      const target = ratio(counts);
+      const match = Theory.forSet(Object.keys(counts)).filter((e) => {
+        const r = Object.keys(e.counts).sort().map((k) => k + e.counts[k] / e.atoms).join();
+        return r === target;
+      }).sort((a, b) => a.fe - b.fe)[0];
+      if (match) val.push([c.dHf / atoms, match.fe * Theory.EV_TO_KJ]);
+    });
+    const mae = val.reduce((a, [x, y]) => a + Math.abs(x - y), 0) / val.length;
+    const signs = val.filter(([x, y]) => Math.sign(x) === Math.sign(y)).length;
+
+    // Which elements form the most (and fewest) stable compounds?
+    const perEl = {};
+    stable.forEach((e) => e.elements.forEach((el) => { perEl[el] = (perEl[el] || 0) + 1; }));
+    const ranked = Object.entries(perEl).sort((a, b) => b[1] - a[1]);
+    const top = ranked.slice(0, 10).map(([el, n]) => `${el} (${n.toLocaleString()})`).join(', ');
+    const bottom = ranked.slice(-8).reverse().map(([el, n]) => `${el} (${n})`).join(', ');
+
+    // How often do element families combine? (pairs only)
+    const fam = {};
+    sets.filter((x) => x.size === 2).forEach((x) => {
+      const [a, b] = x.elements.map((el) => BY_SYMBOL[el].categoryName).sort();
+      const k = a === b ? `${a} + ${a}` : `${a} + ${b}`;
+      const f = (fam[k] = fam[k] || { n: 0, s: 0 });
+      f.n += 1;
+      if (x.status === 'stable') f.s += 1;
+    });
+    const famRows = Object.entries(fam).filter(([, f]) => f.n >= 15).map(([k, f]) => [k, f.s / f.n, f.n]).sort((a, b) => b[1] - a[1]);
+    const famList = (rows) => rows.map(([k, r, n]) => `<li>${esc(k)}: <strong>${Math.round(r * 100)}%</strong> of ${n} pairs</li>`).join('');
+
+    const exo = stable.slice().sort((a, b) => a.fe - b.fe).slice(0, 8)
+      .map((e) => `<li>${fmtFormula(e.formula)}: ${fmtNum(e.fe * Theory.EV_TO_KJ, 0)} kJ/mol per atom${e.known ? '' : ' (no experimental record)'}</li>`).join('');
+    const newBig = hypo.filter((e) => e.elements.length === 2).sort((a, b) => a.fe - b.fe).slice(0, 8)
+      .map((e) => `<li><a href="#" data-open="${e.elements.join('+')}">${fmtFormula(e.formula)}</a> (${e.spg}): ${fmtNum(e.fe * Theory.EV_TO_KJ, 0)} kJ/mol per atom</li>`).join('');
+
+    const sizeRows = Object.keys(bySize).map((k) => `<tr><td>${k}</td><td class="num">${bySize[k].n.toLocaleString()}</td><td class="num">${bySize[k].stable.toLocaleString()}</td><td class="num">${Math.round((100 * bySize[k].stable) / bySize[k].n)}%</td></tr>`).join('');
+
+    return `
+      <div class="insights">
+        <div class="ins-card">
+          <h3>What the calculations predict</h3>
+          <table class="mini"><thead><tr><th>Elements</th><th class="num">Combinations computed</th><th class="num">Form a stable compound</th><th class="num">Share</th></tr></thead><tbody>${sizeRows}</tbody></table>
+          <p><strong>${stable.length.toLocaleString()}</strong> compounds are predicted thermodynamically stable. <strong>${hypo.length.toLocaleString()}</strong> of them have no experimentally determined structure linked in the dataset. Most of these are genuinely new theoretical predictions; some are known compounds whose record is missing.</p>
+        </div>
+        <div class="ins-card">
+          <h3>How far to trust it</h3>
+          <p>Compared with <strong>${val.length}</strong> measured solids in this site's database, the DFT formation enthalpy is off by <strong>${fmtNum(mae, 1)} kJ/mol per atom</strong> on average. It gets the sign (whether the compound forms at all) right in ${signs} of ${val.length} cases.</p>
+          <p>Of ${known.length.toLocaleString()} experimentally known compounds, <strong>${Math.round((100 * knownOnHull) / known.length)}%</strong> come out exactly stable and ${Math.round((100 * knownNear) / known.length)}% lie within 0.1 eV/atom of the hull.</p>
+          <p class="muted">Errors are largest for transition-metal oxides and halides (e.g. MnO, NiO), a known weakness of this functional. "Stable" means stable against the other compounds in this dataset. A compound can look stable simply because its competitors were never computed, which happens more often for systems of 4 or more elements.</p>
+        </div>
+        <div class="ins-card">
+          <h3>Most compound-forming elements</h3>
+          <p>${top}</p>
+          <h3>Least</h3>
+          <p>${bottom}</p>
+        </div>
+        <div class="ins-card">
+          <h3>Which families combine (pairs)</h3>
+          <p class="muted">Share of computed pairs that form at least one stable compound.</p>
+          <ul class="tight">${famList(famRows.slice(0, 6))}</ul>
+          <p class="muted">Least likely:</p>
+          <ul class="tight">${famList(famRows.slice(-5).reverse())}</ul>
+        </div>
+        <div class="ins-card">
+          <h3>Most exothermic stable compounds</h3>
+          <ul class="tight">${exo}</ul>
+        </div>
+        <div class="ins-card">
+          <h3>Strongest stable binaries with no experimental record</h3>
+          <p class="muted">Predicted stable, with no experimental structure linked. Some are known compounds missing that link; the rest are candidates for synthesis, or DFT artefacts.</p>
+          <ul class="tight">${newBig}</ul>
+        </div>
+      </div>`;
+  }
+
+  function filterExplorer() {
+    const raw = $('#x-elements').value.trim();
+    const want = raw ? raw.split(/[\s,+\-]+/).filter(Boolean).map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase()) : [];
+    const size = $('#x-size').value;
+    const status = $('#x-status').value;
+    const onlyNew = $('#x-new').checked;
+    const sort = $('#x-sort').value;
+    let rows = Theory.SETS.filter((x) => x.size > 1
+      && (!size || String(x.size) === size || (size === '5' && x.size >= 5))
+      && (!status || x.status === status)
+      && (!onlyNew || x.hypothetical > 0)
+      && want.every((el) => x.elements.includes(el)));
+    const sorters = {
+      energy: (a, b) => a.best.fe - b.best.fe,
+      compounds: (a, b) => b.compounds - a.compounds,
+      stable: (a, b) => b.stable - a.stable || a.best.fe - b.best.fe,
+      hypothetical: (a, b) => b.hypothetical - a.hypothetical || a.best.fe - b.best.fe,
+      alpha: (a, b) => a.key.localeCompare(b.key),
+    };
+    rows = rows.sort(sorters[sort]);
+    explorer.rows = rows;
+    explorer.shown = 100;
+    renderExplorerRows();
+  }
+
+  function renderExplorerRows() {
+    const rows = explorer.rows;
+    $('#x-count').textContent = `${rows.length.toLocaleString()} combination${rows.length === 1 ? '' : 's'}`;
+    $('#x-body').innerHTML = rows.slice(0, explorer.shown).map((x) => `
+      <tr data-set="${x.elements.join('+')}">
+        <td><strong>${x.elements.join(' + ')}</strong></td>
+        <td class="num">${x.compounds}</td>
+        <td class="num">${x.stable}${x.hypothetical ? ` <span class="muted" title="stable, no experimental record">(${x.hypothetical} unrecorded)</span>` : ''}</td>
+        <td>${fmtFormula(x.best.formula)} <span class="muted">${esc(x.best.spg)}</span></td>
+        <td class="num ${signClass(x.best.fe)}">${fmtNum(x.best.fe * Theory.EV_TO_KJ, 1)}</td>
+        <td class="num">${x.best.ehull.toFixed(3)}</td>
+        <td><span class="badge st-${x.status === 'stable' ? 'stable' : x.status === 'metastable' ? 'meta' : 'unstable'}">${STATUS_LABEL[x.status]}</span></td>
+      </tr>`).join('');
+    $('#x-more').hidden = rows.length <= explorer.shown;
+  }
+
+  function openSet(tokens) {
+    setTray(tokens.split('+'));
+    showTab('lab');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function initExplorer() {
+    let built = false;
+    document.querySelector('[data-tab="theory"]').addEventListener('click', () => {
+      if (built) return;
+      built = true;
+      $('#insights').innerHTML = insightsHTML();
+      filterExplorer();
+    });
+    ['#x-elements', '#x-size', '#x-status', '#x-new', '#x-sort'].forEach((id) => $(id).addEventListener('input', filterExplorer));
+    $('#x-more').addEventListener('click', () => { explorer.shown += 200; renderExplorerRows(); });
+    $('#x-body').addEventListener('click', (ev) => {
+      const tr = ev.target.closest('tr[data-set]');
+      if (tr) openSet(tr.dataset.set);
+    });
+    $('#insights').addEventListener('click', (ev) => {
+      const a = ev.target.closest('[data-open]');
+      if (!a) return;
+      ev.preventDefault();
+      openSet(a.dataset.open);
+    });
+  }
+
   /* ---------- tabs ---------- */
 
   function showTab(name) {
@@ -519,6 +701,7 @@
     const counts = renderStats();
     renderMap(counts);
     initCompounds();
+    initExplorer();
 
     document.querySelector('.tabs').addEventListener('click', (ev) => {
       const t = ev.target.closest('.tab');

@@ -75,10 +75,14 @@ test('tin pest crossover near 13 °C', () => {
 });
 
 test('noble gases do not react; superheavies have no data', () => {
-  assert.strictEqual(E.classifyPair('He', 'F'), 'noble');
+  // He + F: DFT tried hypothetical helium fluorides and found none stable.
+  assert.strictEqual(E.classifyPair('He', 'F'), 'dft-none');
+  assert.strictEqual(E.classifyPair('Ne', 'Rn'), 'noble');
   assert.strictEqual(E.classifyPair('Xe', 'F'), 'data');
   assert.strictEqual(E.classifyPair('Og', 'F'), 'superheavy');
-  assert.strictEqual(E.classifyPair('Cu', 'Zn'), 'alloy');
+  const he = E.combine([{ symbol: 'He' }, { symbol: 'F' }]);
+  assert.strictEqual(he[0].status, 'noble');
+  assert.strictEqual(he[1].info.status, 'unstable');
 });
 
 test('every one of the 7,021 pairs gets a result without throwing', () => {
@@ -102,6 +106,16 @@ test('predicted formulas follow charge balance', () => {
   assert.strictEqual(E.predictBinary(BY_SYMBOL.Rb, BY_SYMBOL.I).formula, 'RbI');
   assert.strictEqual(E.predictBinary(BY_SYMBOL.Al, BY_SYMBOL.Se).formula, 'Al2Se3');
   assert.strictEqual(E.predictBinary(BY_SYMBOL.Ba, BY_SYMBOL.N).formula, 'Ba3N2');
+});
+
+test('DFT predictions: tens of thousands of combinations, NaCl stable and known', () => {
+  const T = require('../js/theory.js');
+  assert.ok(T.SETS.filter((x) => x.size >= 2).length > 30000);
+  const nacl = T.forSet(['Na', 'Cl']).find((e) => e.formula === 'NaCl');
+  assert.ok(nacl && nacl.ehull === 0 && nacl.known && nacl.fe < -1.5);
+  // a ternary without measured data gets a DFT section with balanced reactions
+  const s = E.combine([{ symbol: 'Li' }, { symbol: 'Fe' }, { symbol: 'P' }]).find((x) => x.status === 'dft');
+  assert.ok(s && s.reactions.length > 0 && s.reactions.every((r) => r.dH < 0 || r.dft.fe >= 0));
 });
 
 test('D-T fusion releases 17.59 MeV', () => {

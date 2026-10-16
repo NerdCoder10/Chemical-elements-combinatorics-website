@@ -7,6 +7,7 @@
   const isNode = typeof module !== 'undefined' && module.exports;
   const { ELEMENTS, BY_SYMBOL } = isNode ? require('./elements.js') : root;
   const { COMPOUNDS, SPECIES } = isNode ? require('./thermo.js') : root;
+  const Theory = isNode ? require('./theory.js') : root.Theory;
 
   const R = 8.314462618; // J/(mol·K)
   const T0 = 298.15;
@@ -248,7 +249,7 @@
       const reactions = tab.map((c) => formationReaction(c)).sort(byStability);
       return { status: 'data', summary: `${tab.length} tabulated compound${tab.length > 1 ? 's' : ''} of ${a.name} and ${b.name}.`, reactions };
     }
-    const status = classifyPair(sa, sb);
+    const status = ruleClass(sa, sb);
     if (status === 'superheavy') {
       const heavy = [a, b].filter((e) => e.superheavy).map((e) => e.name).join(' and ');
       return {
@@ -336,9 +337,18 @@
     return gx / atoms(x) - gy / atoms(y);
   }
 
+  /**
+   * Outcome class for a pair: measured data first, then DFT predictions, then the simple rules.
+   */
   function classifyPair(sa, sb) {
     if (sa === sb) return 'same';
     if (compoundsFor([sa, sb]).length) return 'data';
+    const info = Theory && Theory.infoFor([sa, sb]);
+    if (info) return info.status === 'unstable' ? 'dft-none' : 'dft';
+    return ruleClass(sa, sb);
+  }
+
+  function ruleClass(sa, sb) {
     const a = BY_SYMBOL[sa];
     const b = BY_SYMBOL[sb];
     if (a.superheavy || b.superheavy) return 'superheavy';
@@ -397,6 +407,58 @@
     return m[1].split('').map((c) => supDigits[c]).join('') + m[2];
   }
 
+  /* ---------- theoretical (DFT) predictions ---------- */
+
+  const DFT_SHOWN = 6;
+  const PAIR_BREAKDOWN_MAX = 4; // with more elements the pair-by-pair list gets too long
+
+  function dftReaction(e) {
+    const r = formationReaction({
+      formula: e.formula,
+      phase: 's',
+      dHf: e.dHf,
+      S: null,
+      name: `${e.formula} (${e.spg})`,
+    }, { quality: 'dft', dft: e });
+    const parts = [Theory.stabilityText(e), Theory.gapText(e)];
+    if (e.polymorphs > 1) parts.push(`${e.polymorphs} crystal structures were computed for this formula; the most stable one is shown.`);
+    parts.push(`ΔH is the DFT formation energy (${e.fe.toFixed(3)} eV/atom, ≈ 0 K). ΔS is an additive estimate assuming a solid product.`);
+    r.note = parts.filter(Boolean).join(' ');
+    return r;
+  }
+
+  /** Section with the computed compounds of exactly this element set, or null if none were computed. */
+  function dftSection(syms) {
+    if (!Theory) return null;
+    const list = Theory.forSet(syms);
+    if (!list.length) return null;
+    const info = Theory.infoFor(syms);
+    const names = syms.map((s) => BY_SYMBOL[s].name).join(', ');
+    let shown = list.filter((e) => e.fe < 0 && e.ehull <= Theory.NEAR).slice(0, DFT_SHOWN);
+    if (!shown.length) shown = list.slice(0, 3);
+    let summary;
+    if (info.stable) {
+      summary = `DFT computed ${info.compounds} compound${info.compounds > 1 ? 's' : ''} of ${names}. `
+        + `${info.stable} ${info.stable > 1 ? 'are' : 'is'} predicted thermodynamically stable`
+        + (info.hypothetical ? `, including ${info.hypothetical} with no experimental record (a theoretical prediction).` : '.');
+    } else if (info.status === 'metastable') {
+      summary = `DFT computed ${info.compounds} compound${info.compounds > 1 ? 's' : ''} of ${names}. None is fully stable, but the best lies within ${info.best.ehull.toFixed(3)} eV/atom of the convex hull, so it may still be made.`;
+    } else {
+      summary = `DFT computed ${info.compounds} hypothetical compound${info.compounds > 1 ? 's' : ''} of ${names}, and none is stable.`
+        + (syms.length > 2
+          ? ' These elements would rather form simpler compounds (see the pairs) than a compound containing all of them.'
+          : ' These elements are predicted not to form a compound and would stay separate or mix.');
+    }
+    if (list.length > shown.length) summary += ` Showing the ${shown.length} lowest in energy.`;
+    return {
+      title: `Theoretical prediction (DFT): ${syms.map((s) => s).join(' + ')}`,
+      status: 'dft',
+      summary,
+      reactions: shown.map(dftReaction),
+      info,
+    };
+  }
+
   /* ---------- top level ---------- */
 
   /**
@@ -434,26 +496,39 @@
     if (syms.length > 2) {
       const exact = compoundsFor(syms).map((c) => formationReaction(c)).sort(byStability);
       const names = syms.map((s) => BY_SYMBOL[s].name).join(' + ');
-      sections.push({
-        title: names,
-        status: exact.length ? 'data' : 'none',
-        summary: exact.length
-          ? `${exact.length} tabulated compound${exact.length > 1 ? 's' : ''} containing all ${syms.length} elements.`
-          : `No compound containing all ${syms.length} of these elements is in the database. The pairs below show what each pair forms.`,
-        reactions: exact,
-      });
+      const dft = dftSection(syms);
+      let summary;
+      if (exact.length) summary = `${exact.length} tabulated compound${exact.length > 1 ? 's' : ''} containing all ${syms.length} elements.`;
+      else if (dft) summary = `No measured data for a compound containing all ${syms.length} elements. See the theoretical prediction below.`;
+      else summary = `No compound containing all ${syms.length} of these elements has been measured or computed.${syms.length <= PAIR_BREAKDOWN_MAX ? ' The pairs below show what each pair forms.' : ''}`;
+      sections.push({ title: names, status: exact.length ? 'data' : 'none', summary, reactions: exact });
+      if (dft) sections.push(dft);
+      if (syms.length > PAIR_BREAKDOWN_MAX) return sections;
       for (let i = 0; i < syms.length; i += 1) {
         for (let j = i + 1; j < syms.length; j += 1) {
-          const r = combinePair(syms[i], syms[j]);
-          sections.push({ title: `${BY_SYMBOL[syms[i]].name} + ${BY_SYMBOL[syms[j]].name}`, sub: true, ...r });
+          pairSections(syms[i], syms[j]).forEach((p) => sections.push({ ...p, sub: true }));
         }
       }
       return sections;
     }
 
-    const r = combinePair(syms[0], syms[1]);
-    sections.push({ title: `${BY_SYMBOL[syms[0]].name} + ${BY_SYMBOL[syms[1]].name}`, ...r });
+    pairSections(syms[0], syms[1]).forEach((p) => sections.push(p));
     return sections;
+  }
+
+  /** Rule-based / measured result for a pair, merged with the DFT prediction where one exists. */
+  function pairSections(sa, sb) {
+    const title = `${BY_SYMBOL[sa].name} + ${BY_SYMBOL[sb].name}`;
+    const base = { title, ...combinePair(sa, sb) };
+    const dft = dftSection([sa, sb]);
+    if (!dft) return [base];
+    const forms = dft.info.status !== 'unstable';
+    if (base.status === 'predicted') return [{ ...dft, title }]; // DFT replaces the crude Pauling estimate
+    if (base.status === 'alloy' && forms) {
+      base.summary = 'Two metals. Besides simply mixing into an alloy, DFT predicts definite intermetallic compounds at fixed ratios:';
+      base.reactions = [];
+    }
+    return [base, dft];
   }
 
   const api = {
@@ -467,6 +542,7 @@
     combine,
     classifyPair,
     predictBinary,
+    dftSection,
     sameElementReactions,
     nuclearReactions,
     isoLabel,
