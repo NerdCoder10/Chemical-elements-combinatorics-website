@@ -17,7 +17,7 @@ It also works as-is on GitHub Pages. The URL hash holds the current selection, s
 - **Reaction lab**: periodic table, reaction tray with isotope pickers, and result cards with the equation, ΔH°, ΔS°, ΔG(T), and whether/when the reaction is favourable.
 - **All combinations map**: a 118 × 118 grid of all 7,021 element pairs, coloured by outcome. Click a cell to open that pair.
 - **Compound database**: a sortable, searchable table of every tabulated compound's ΔHf°, ΔSf° and ΔGf°.
-- **Element details**: atomic weight, electronegativity, oxidation states, standard state, S°, and isotopes with natural abundances and half-lives.
+- **Element details**: atomic weight, electronegativity, oxidation states, standard state, S°, and **all 3,339 known isotopes** (from NUBASE2020) with half-life, decay modes, natural abundance, atomic mass and discovery year.
 - **Nuclear reactions**: picking specific isotopes (e.g. ²H + ³H, ¹H + ⁷Li) shows fusion and transmutation reactions with their Q-values.
 
 ## Where the numbers come from
@@ -39,11 +39,15 @@ Isotopes share the same electron structure, so their chemistry is essentially id
 index.html          page structure
 css/style.css       styles (light/dark)
 js/elements.js      118 elements: weights, categories, electronegativity, oxidation states, S°
-js/isotopes.js      stable isotopes (abundances) and notable radioisotopes (half-lives)
+js/isotopes.js      all known isotopes (GENERATED from data/nubase_4.mas20.txt)
 js/thermo.js        ΔHf° / S° database for compounds, atoms and allotropes
 js/engine.js        formula parsing, balancing, thermodynamics, predictions
 js/app.js           UI
+data/nubase_4.mas20.txt   NUBASE2020 source file (IAEA/AMDC)
+scripts/build_isotopes.py regenerates js/isotopes.js
 tests/engine.test.js
 ```
+
+To regenerate the isotope data: `python3 scripts/build_isotopes.py`.
 
 Run the tests with `node tests/engine.test.js`.

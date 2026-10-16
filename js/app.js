@@ -1,7 +1,7 @@
 /* UI for the Element Combinator. Depends on elements.js, isotopes.js, thermo.js, engine.js. */
 (function () {
   const MAX_TRAY = 4;
-  const state = { tray: [], T: 298 };
+  const state = { tray: [], T: 298, infoSym: null, allIsotopes: false };
   const $ = (sel) => document.querySelector(sel);
 
   /* ---------- formatting ---------- */
@@ -87,13 +87,22 @@
 
   function renderInfo(sym) {
     const e = BY_SYMBOL[sym];
-    const isos = ISOTOPES[sym] || [];
+    state.infoSym = sym;
+    const all = ISOTOPES[sym] || [];
+    const isos = state.allIsotopes ? all : all.filter((i) => i.notable);
     const ox = e.ox.length ? e.ox.map((o) => (o > 0 ? '+' + o : String(o).replace('-', '−'))).join(', ') : '—';
     const stateName = { s: 'solid', l: 'liquid', g: 'gas' }[e.state] + (e.statePredicted ? ' (predicted)' : '');
     const rows = isos.map((i) => `
       <tr><td>${isoSup(i.A)}${e.symbol}</td>
+      <td>${i.halfLife ? `<span class="pill radio">${esc(i.halfLife)}</span>` : '<span class="pill">stable</span>'}</td>
+      <td class="decay">${esc(i.decay || '—')}</td>
       <td class="num">${i.abundance != null ? i.abundance + ' %' : '—'}</td>
-      <td>${i.halfLife ? `<span class="pill radio">t½ ${esc(i.halfLife)}</span>` : '<span class="pill">stable</span>'}</td></tr>`).join('');
+      <td class="num">${i.atomicMass != null ? i.atomicMass.toFixed(6) : '—'}</td>
+      <td class="num">${i.discovered}</td></tr>`).join('');
+    const hidden = all.length - isos.length;
+    const toggle = state.allIsotopes
+      ? `<button class="btn" data-iso-toggle>Show notable only</button>`
+      : `<button class="btn" data-iso-toggle>Show all ${all.length} known isotopes</button>`;
     $('#element-info').innerHTML = `
       <div class="ei-head">
         <div class="ei-tile cat-${e.category}"><small>${e.Z}</small><b>${e.symbol}</b></div>
@@ -108,10 +117,16 @@
         <div><dt>ΔH<sub>f</sub>° (standard state)</dt><dd>0 kJ/mol (by definition)</dd></div>
         <div><dt>S° (standard state)</dt><dd>${e.S != null ? fmtNum(e.S, 2) + ' J/(mol·K)' : 'not reliably known'}</dd></div>
       </dl>
-      <table class="iso-table">
-        <thead><tr><th>Isotope</th><th>Natural abundance</th><th>Stability</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="iso-head">
+        <h3>Isotopes <span class="muted">(${isos.length} of ${all.length} known${hidden ? ', notable shown' : ''})</span></h3>
+        ${toggle}
+      </div>
+      <div class="iso-scroll">
+        <table class="iso-table">
+          <thead><tr><th>Isotope</th><th>Half-life</th><th>Decay modes</th><th class="num">Abundance</th><th class="num">Mass (u)</th><th class="num">Found</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
   }
 
   /* ---------- tray ---------- */
@@ -130,10 +145,13 @@
     }
     t.innerHTML = state.tray.map((s, i) => {
       const e = BY_SYMBOL[s.symbol];
-      const opts = (ISOTOPES[s.symbol] || []).map((iso) => {
+      const option = (iso) => {
         const lbl = `${isoSup(iso.A)}${e.symbol}${iso.abundance != null ? ` (${iso.abundance}%)` : iso.halfLife ? ` (t½ ${iso.halfLife})` : ''}`;
         return `<option value="${iso.A}" ${s.isotope === iso.A ? 'selected' : ''}>${esc(lbl)}</option>`;
-      }).join('');
+      };
+      const list = ISOTOPES[s.symbol] || [];
+      const opts = `<optgroup label="Notable">${list.filter((x) => x.notable).map(option).join('')}</optgroup>`
+        + `<optgroup label="All other known isotopes">${list.filter((x) => !x.notable).map(option).join('')}</optgroup>`;
       return `${i ? '<span class="plus">+</span>' : ''}
         <div class="slot cat-${e.category}">
           <button class="rm" data-rm="${i}" aria-label="Remove ${e.name}">×</button>
@@ -322,11 +340,10 @@
     const pc = pairClasses();
     const counts = {};
     for (let i = 0; i < pc.length; i += 1) for (let j = i; j < pc.length; j += 1) counts[pc[i][j]] = (counts[pc[i][j]] || 0) + 1;
-    const nIso = Object.values(ISOTOPES).reduce((s, l) => s + l.length, 0);
     const nStable = Object.values(ISOTOPES).reduce((s, l) => s + l.filter((i) => i.stable).length, 0);
     $('#stats').innerHTML = [
       `<span><strong>118</strong> elements</span>`,
-      `<span><strong>${nIso}</strong> isotopes listed (${nStable} stable)</span>`,
+      `<span><strong>${NUCLIDE_COUNT.toLocaleString()}</strong> known isotopes (${nStable} stable)</span>`,
       `<span><strong>${COMPOUNDS.length}</strong> tabulated compounds</span>`,
       `<span><strong>7,021</strong> element pairs: <strong>${counts.data}</strong> with data, <strong>${counts.predicted}</strong> predicted, <strong>${counts.alloy}</strong> metal–metal, <strong>${counts.noble}</strong> noble-gas</span>`,
     ].join('');
@@ -514,6 +531,11 @@
       if (first && ev.target.value.trim()) { addToTray(first.dataset.sym); renderInfo(first.dataset.sym); }
     });
     $('#clear').addEventListener('click', () => setTray([]));
+    $('#element-info').addEventListener('click', (ev) => {
+      if (!ev.target.closest('[data-iso-toggle]')) return;
+      state.allIsotopes = !state.allIsotopes;
+      renderInfo(state.infoSym);
+    });
     $('#tray').addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-rm]');
       if (!b) return;

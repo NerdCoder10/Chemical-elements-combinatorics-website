@@ -1,7 +1,7 @@
 // Run with: node tests/engine.test.js
 const assert = require('assert');
 const { ELEMENTS, BY_SYMBOL } = require('../js/elements.js');
-const { ISOTOPES } = require('../js/isotopes.js');
+const { ISOTOPES, NUCLIDE_COUNT } = require('../js/isotopes.js');
 const { COMPOUNDS } = require('../js/thermo.js');
 const E = require('../js/engine.js');
 
@@ -29,6 +29,16 @@ test('every element has isotopes; natural abundances sum to ~100 %', () => {
     const total = list.reduce((s, i) => s + (i.abundance || 0), 0);
     if (total > 0) assert.ok(Math.abs(total - 100) < 0.2, `${e.symbol} abundances sum to ${total}`);
   });
+});
+
+test('all 3,339 observed nuclides from NUBASE2020, each element has notable isotopes', () => {
+  assert.strictEqual(NUCLIDE_COUNT, 3339);
+  const groundStates = Object.values(ISOTOPES).flat().filter((i) => !i.A.endsWith('m'));
+  assert.strictEqual(groundStates.length, 3339);
+  ELEMENTS.forEach((e) => assert.ok(ISOTOPES[e.symbol].some((i) => i.notable), `no notable isotope for ${e.symbol}`));
+  const c14 = ISOTOPES.C.find((i) => i.A === '14');
+  assert.strictEqual(c14.halfLife, '5,700 y');
+  assert.ok(ISOTOPES.U.find((i) => i.A === '235').decay.startsWith('α'));
 });
 
 test('every compound parses into known elements and formation reactions conserve atoms', () => {
