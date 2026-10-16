@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Element Combinator</title>
+  <meta name="description" content="Pick any of the 118 chemical elements and their isotopes, combine them, and see what forms: balanced equation, ΔH°, ΔS° and ΔG°.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>Element Combinator</h1>
+      <p class="lede">Click elements to drop them into the reaction tray. Pick an isotope if you like. You'll see what forms (or why nothing does), with the balanced equation, ΔH°, ΔS° and ΔG°.</p>
+      <div class="stats" id="stats"></div>
+      <nav class="tabs" role="tablist">
+        <button role="tab" class="tab active" data-tab="lab" aria-selected="true">Reaction lab</button>
+        <button role="tab" class="tab" data-tab="map" aria-selected="false">All combinations map</button>
+        <button role="tab" class="tab" data-tab="compounds" aria-selected="false">Compound database</button>
+        <button role="tab" class="tab" data-tab="about" aria-selected="false">Method &amp; sources</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- LAB -->
+    <section id="tab-lab" class="tab-panel active">
+      <div class="lab-grid">
+        <div class="table-col">
+          <div class="toolbar">
+            <input id="search" type="search" placeholder="Find an element (name, symbol or Z)…" autocomplete="off">
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="ptable-scroll"><div id="ptable" class="ptable" aria-label="Periodic table"></div></div>
+          <div id="element-info" class="card element-info"><p class="muted">Hover over or long-press an element to see its data and isotopes.</p></div>
+        </div>
+
+        <div class="result-col">
+          <div class="card tray-card">
+            <div class="tray-head">
+              <h2>Reaction tray</h2>
+              <button id="clear" class="btn ghost">Clear</button>
+            </div>
+            <div id="tray" class="tray"></div>
+            <p class="hint">Up to 4 elements. Click the same element twice to react it with itself (for example ²H + ³H fusion).</p>
+            <label class="temp">
+              <span>Temperature for ΔG: <strong id="temp-val">298 K</strong></span>
+              <input id="temp" type="range" min="50" max="3000" step="1" value="298">
+            </label>
+            <div class="examples" id="examples"></div>
+          </div>
+          <div id="results" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAP -->
+    <section id="tab-map" class="tab-panel" hidden>
+      <div class="card">
+        <h2>Every pair of the 118 elements</h2>
+        <p>There are <strong>7,021</strong> ways to pick two elements (6,903 different pairs plus 118 element-with-itself cases). Each cell is one pair, ordered by atomic number. Hover to inspect a cell and click to open it in the lab.</p>
+        <div class="map-legend" id="map-legend"></div>
+        <div class="map-wrap">
+          <canvas id="map" width="944" height="944" aria-label="Map of all element pairs"></canvas>
+          <div id="map-tip" class="map-tip" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPOUNDS -->
+    <section id="tab-compounds" class="tab-panel" hidden>
+      <div class="card">
+        <h2>Tabulated compounds</h2>
+        <p>Standard formation data at 298.15 K. ΔH° and ΔS° are per mole of compound formed from its elements in their standard states. Click a row to open its elements in the lab.</p>
+        <input id="csearch" type="search" placeholder="Filter by formula, name or element…" autocomplete="off">
+        <div class="table-scroll">
+          <table class="ctable">
+            <thead><tr>
+              <th data-sort="formula">Formula</th><th data-sort="name">Name</th><th data-sort="phase">Phase</th>
+              <th data-sort="dHf" class="num">ΔH<sub>f</sub>° (kJ/mol)</th>
+              <th data-sort="dSf" class="num">ΔS<sub>f</sub>° (J/mol·K)</th>
+              <th data-sort="dGf" class="num">ΔG<sub>f</sub>° (kJ/mol)</th>
+            </tr></thead>
+            <tbody id="ctbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="tab-about" class="tab-panel" hidden>
+      <div class="card prose">
+        <h2>How the results are produced</h2>
+        <p>Every combination falls into one of these cases. The badge on each result tells you which one you are looking at.</p>
+        <dl class="defs">
+          <dt><span class="badge q-tabulated">Tabulated</span></dt>
+          <dd>The compound is in the database with measured ΔH<sub>f</sub>° and S°. The site balances the formation reaction (elements in their standard states → compound) and computes
+            ΔH° = Σ ν ΔH<sub>f</sub>°(products) − Σ ν ΔH<sub>f</sub>°(reactants) and ΔS° = Σ ν S°(products) − Σ ν S°(reactants). Elements in their standard states have ΔH<sub>f</sub>° = 0 by definition.</dd>
+          <dt><span class="badge q-partial">ΔS estimated</span></dt>
+          <dd>ΔH<sub>f</sub>° is measured, but S° of the compound is not in the tables used, so S° is estimated by adding up per-atom contributions.</dd>
+          <dt><span class="badge q-estimated">Estimated</span></dt>
+          <dd>No tabulated compound. A formula is predicted from the most common oxidation states. ΔH is estimated with Pauling's electronegativity relation (ΔH<sub>f</sub> ≈ −96.5 kJ/mol × bonds × Δχ²), and ΔS with additive atomic entropies. These are order-of-magnitude values only, and the predicted compound may not exist in exactly that form.</dd>
+          <dt><span class="badge q-none">No reaction</span></dt>
+          <dd>Noble gases (apart from a few xenon and krypton compounds), or an element combined with itself when it has no other allotrope. Nothing changes, so ΔH° = ΔS° = 0.</dd>
+          <dt><span class="badge q-nuclear">Nuclear</span></dt>
+          <dd>Only when you pick specific isotopes. Fusion and transmutation reactions are shown with their Q-value. ΔH is −Q per mole of events. These energies are about a million times larger than chemical ones.</dd>
+        </dl>
+        <h3>Things to keep in mind</h3>
+        <ul>
+          <li><strong>Thermodynamics is not kinetics.</strong> A negative ΔG° says a reaction is favourable, not that it is fast. Diamond is less stable than graphite and still lasts forever.</li>
+          <li><strong>Isotopes barely change chemistry.</strong> Different isotopes of an element share the same electron structure. Effects on ΔH are typically well below 1 %. Hydrogen is the exception: D₂O is shown separately.</li>
+          <li><strong>ΔG at other temperatures</strong> uses ΔG(T) ≈ ΔH° − TΔS°, treating ΔH° and ΔS° as constant. This is reasonable for a few hundred kelvin and ignores phase changes.</li>
+          <li><strong>Elements 101–118</strong> have only ever been made a few atoms at a time, so they have no measurable bulk thermochemistry.</li>
+          <li><strong>Isotopes:</strong> about 3,300 nuclides are known. The site lists every stable isotope with its natural abundance, plus the notable radioactive ones.</li>
+        </ul>
+        <h3>Sources</h3>
+        <ul>
+          <li>NIST-JANAF Thermochemical Tables; CODATA Key Values for Thermodynamics (1989)</li>
+          <li>CRC Handbook of Chemistry and Physics, “Standard Thermodynamic Properties of Chemical Substances”</li>
+          <li>IUPAC standard atomic weights and isotopic compositions; NUBASE2020 / NNDC half-lives</li>
+          <li>Pauling, <em>The Nature of the Chemical Bond</em> (electronegativity and the ΔH estimate)</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">Data at 298.15 K and 1 bar. For education, not for lab safety decisions.</footer>
+
+  <script src="js/elements.js"></script>
+  <script src="js/isotopes.js"></script>
+  <script src="js/thermo.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
