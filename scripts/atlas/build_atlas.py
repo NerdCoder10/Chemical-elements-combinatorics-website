@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Merge PubChem, COD and Alexandria into the site's combination atlas.
+
+Inputs (made by the fetch_*.py scripts): data/cache/pubchem_sets.json, data/cache/cod_sets.json,
+data/cache/alexandria/p*.json.
+Outputs:
+  js/atlas/bNN.js        64 chunks of per-combination records, loaded on demand by js/atlas.js.
+                         A combination's chunk is FNV-1a(key) % 64, key = sorted symbols joined by "-".
+  js/atlas-summary.js    totals, every pair (for the map), and ranked lists.
+Run:  python3 scripts/atlas/build_atlas.py
+"""
+import glob
+import json
+import math
+import os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+CACHE = os.path.join(ROOT, 'data', 'cache')
+BUCKETS = 64
+ROWS_PER_SET = 3  # stable compounds kept per combination (lowest formation energy first)
+
+
+def fnv1a(s):
+    h = 0x811C9DC5
+    for b in s.encode():
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def load_alexandria():
+    alex, entries, skipped = {}, 0, 0
+    parts = sorted(glob.glob(os.path.join(CACHE, 'alexandria', 'p*.json')))
+    if len(parts) != 58:
+        raise SystemExit(f'expected 58 Alexandria summaries, found {len(parts)}; run fetch_alexandria.py')
+    for p in parts:
+        d = json.load(open(p))
+        entries += d['entries']
+        skipped += d.get('skipped', 0)
+        for k, s in d['sets'].items():
+            a = alex.setdefault(k, {'n': 0, 'stable': {}, 'best': None})
+            a['n'] += s['n']
+            b = s['best']
+            if b and (a['best'] is None or (b[2], b[1]) < (a['best'][2], a['best'][1])):
+                a['best'] = b
+            for row in s['stable']:
+                if row[0] not in a['stable'] or row[1] < a['stable'][row[0]][1]:
+                    a['stable'][row[0]] = row
+    return alex, entries, skipped
+
+
+def clean(s):
+    return str(s).replace('|', '/').replace('~', '-').replace('^', '').replace(',', ' ')
+
+
+def row_text(r):
+    """formula^ΔHf (eV/atom)^Ehull (eV/atom)^space-group number^band gap (eV)^Alexandria id without "agm"."""
+    formula, fe, eh, spg, gap, mid = r
+    return '^'.join(map(str, (clean(formula), round(fe, 3), round(max(eh, 0), 3), spg, gap,
+                              mid[3:] if mid.startswith('agm') else mid)))
+
+
+def main():
+    pub = json.load(open(os.path.join(CACHE, 'pubchem_sets.json')))
+    cod = json.load(open(os.path.join(CACHE, 'cod_sets.json')))
+    alex, entries, skipped = load_alexandria()
+    P, C = pub['sets'], cod['sets']
+    keys = sorted(k for k in set(P) | set(C) | set(alex) if '-' in k)
+
+    buckets = [[] for _ in range(BUCKETS)]
+    pairs = []
+    stats = {}
+    new_stable = []  # DFT-stable, but no record in PubChem or COD
+    for k in keys:
+        n = k.count('-') + 1
+        a = alex.get(k)
+        stable = sorted(a['stable'].values(), key=lambda r: r[1]) if a else []
+        ptxt = f'{P[k][0]}~{P[k][1]}~{clean(P[k][2])}' if k in P else ''
+        ctxt = f'{C[k][0]}~{clean(C[k][1])}' if k in C else ''
+        if a:
+            rows = stable[:ROWS_PER_SET] or ([a['best']] if a['best'] else [])
+            atxt = f'{a["n"]}~{len(stable)}~' + ','.join(row_text(r) for r in rows)
+        else:
+            atxt = ''
+        buckets[fnv1a(k) % BUCKETS].append(f'{k}|{ptxt}|{ctxt}|{atxt}')
+        if n == 2:
+            pairs.append(f'{k}|{P[k][0] if k in P else 0}|{C[k][0] if k in C else 0}|{a["n"] if a else 0}|{len(stable)}')
+        s = stats.setdefault(min(n, 8), {'seen': 0, 'known': 0, 'pubchem': 0, 'cod': 0, 'computed': 0, 'stable': 0, 'stableUnknown': 0})
+        s['seen'] += 1
+        s['pubchem'] += k in P
+        s['cod'] += k in C
+        s['known'] += k in P or k in C
+        s['computed'] += a is not None
+        s['stable'] += bool(stable)
+        if stable and k not in P and k not in C:
+            s['stableUnknown'] += 1
+            if n <= 3:
+                new_stable.append((stable[0][1], k, stable[0]))
+
+    os.makedirs(os.path.join(ROOT, 'js', 'atlas'), exist_ok=True)
+    total_bytes = 0
+    for i, rows in enumerate(buckets):
+        js = f'Atlas.loaded({i},{json.dumps(chr(10).join(rows))});\n'
+        total_bytes += len(js.encode())
+        with open(os.path.join(ROOT, 'js', 'atlas', f'b{i:02d}.js'), 'w') as fh:
+            fh.write(js)
+
+    new_stable.sort()
+    for n in stats:
+        stats[n]['possible'] = math.comb(118, n) if n < 8 else None
+    summary = {
+        'sources': {
+            'pubchem': {'compounds': pub['lines'], 'sets': len(P)},
+            'cod': {'structures': cod['structures'], 'sets': len(C)},
+            'alexandria': {'entries': entries, 'skipped': skipped, 'sets': len(alex),
+                           'stable': sum(len(a['stable']) for a in alex.values())},
+        },
+        'combinations': len(keys),
+        'bySize': stats,
+        'pairs': '\n'.join(pairs),
+        'newStable': [[k, r[0], r[1], r[3], r[5]] for _, k, r in new_stable[:60]],
+    }
+    header = """/*
+ * GENERATED by scripts/atlas/build_atlas.py. Do not edit by hand.
+ * Combination atlas built from PubChem (NCBI), the Crystallography Open Database (via JARVIS) and
+ * the Alexandria DFT database (PBE 2025.07.02). Per-combination records live in js/atlas/bNN.js.
+ */
+"""
+    with open(os.path.join(ROOT, 'js', 'atlas-summary.js'), 'w') as fh:
+        fh.write(header + 'var ATLAS_SUMMARY = ' + json.dumps(summary, separators=(',', ':')) + ';\n'
+                 + "if (typeof module !== 'undefined' && module.exports) module.exports = { ATLAS_SUMMARY };\n")
+    print(f'{len(keys):,} combinations in {BUCKETS} chunks ({total_bytes / 1e6:.1f} MB), {len(pairs)} pairs')
+    for n in sorted(stats):
+        print(n, stats[n])
+
+
+if __name__ == '__main__':
+    main()

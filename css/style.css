@@ -22,7 +22,7 @@
 
   --m-data: #2f9e63; --m-predicted: #e0a43a; --m-alloy: #7f9cc8; --m-noble: #bfc4ce;
   --m-same: #39414f; --m-superheavy: #e9eaee; --m-unknown: #d47b7b;
-  --m-dft: #7a55c7; --m-dft-none: #e7a3a3;
+  --m-dft: #7a55c7; --m-dft-none: #e7a3a3; --m-known: #1f8f8a;
 
   --radius: 10px;
   --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 4px 14px rgba(20, 30, 50, .05);
@@ -280,3 +280,9 @@ input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: -
 .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .title-row h1 { margin: 0 0 .3em; }
 .btn.install { background: var(--accent); color: var(--surface); border-color: var(--accent); font-weight: 600; }
+
+/* every-database (atlas) */
+.atlas-slot { display: flex; flex-direction: column; gap: 14px; }
+.sources { margin: 0; padding-left: 18px; font-size: .88rem; display: grid; gap: 6px; }
+.sources a, .atlas-card a { color: var(--accent); }
+.section-head h3 .badge { vertical-align: middle; margin-left: 4px; }

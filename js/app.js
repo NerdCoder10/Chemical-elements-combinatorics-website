@@ -204,13 +204,19 @@
     none: ['q-none', 'No reaction'],
     nuclear: ['q-nuclear', 'Nuclear'],
     dft: ['q-dft', 'Computed (DFT)'],
+    alex: ['q-dft', 'Computed (Alexandria DFT)'],
   };
 
   const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
 
   function stabilityBadge(e) {
     if (e.fe >= 0) return '<span class="badge st-unstable">does not form</span>';
-    if (e.ehull <= Theory.STABLE) return `<span class="badge st-stable">predicted stable</span>${e.known ? '<span class="badge st-known">observed</span>' : '<span class="badge st-new" title="No experimentally determined structure (ICSD) is linked to it">no experimental record</span>'}`;
+    if (e.ehull <= Theory.STABLE) {
+      let extra = '';
+      if (e.known === true) extra = '<span class="badge st-known">observed</span>';
+      else if (e.known === false) extra = '<span class="badge st-new" title="No experimentally determined structure (ICSD) is linked to it">no experimental record</span>';
+      return `<span class="badge st-stable">predicted stable</span>${extra}`;
+    }
     if (e.ehull <= Theory.METASTABLE) return '<span class="badge st-meta">metastable</span>';
     return '<span class="badge st-unstable">unstable</span>';
   }
@@ -238,7 +244,7 @@
         <p class="verdict">${verdict(r, T)}</p>
         ${perMol}
         ${r.note ? `<p class="rx-note">${esc(r.note)}</p>` : ''}
-        ${r.dft ? `<p class="rx-note"><a href="${JARVIS_URL(r.dft.jid)}" target="_blank" rel="noopener">View the computed crystal structure (${r.dft.jid})</a></p>` : ''}
+        ${r.dft && r.dft.jid ? `<p class="rx-note"><a href="${JARVIS_URL(r.dft.jid)}" target="_blank" rel="noopener">View the computed crystal structure (${r.dft.jid})</a></p>` : ''}
       </article>`;
   }
 
@@ -270,10 +276,104 @@
       html += `<div class="section-head ${s.sub ? 'sub' : ''}"><h3>${esc(s.title)}</h3><p>${esc(s.summary || '')}</p></div>`;
       s.reactions.forEach((r) => { html += reactionHTML(r, T); });
     });
+    const syms = [...new Set(state.tray.map((x) => x.symbol))];
+    if (syms.length > 1) html += '<div id="atlas-slot" class="atlas-slot"><p class="muted">Checking every database…</p></div>';
     if (state.tray.length === 1) {
       html += '<p class="hint">Add another element to see what they form together, or click the same element again to react it with itself.</p>';
     }
     out.innerHTML = html;
+    if (syms.length > 1) renderAtlas(syms, T);
+  }
+
+  /* ---------- every database (atlas) ---------- */
+
+  const PUBCHEM_URL = (cid) => `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`;
+  const atlasCache = new Map();
+  let atlasToken = 0;
+
+  function alexReaction(row, known) {
+    const counts = Engine.parseFormula(row.formula);
+    const atoms = Object.values(counts).reduce((a, b) => a + b, 0);
+    const r = Engine.formationReaction({ formula: row.formula, phase: 's', dHf: row.fe * atoms * Atlas.EV_TO_KJ, S: null, name: row.formula },
+      { quality: 'alex', dft: { formula: row.formula, fe: row.fe, ehull: row.ehull, spg: `space group ${row.spg}`, gap: row.gap, known: null } });
+    const parts = [];
+    parts.push(row.ehull <= Theory.STABLE
+      ? 'On the Alexandria convex hull: stable against all ~5.8 million compounds that database computed.'
+      : `Not stable: ${row.ehull.toFixed(3)} eV/atom above the Alexandria convex hull. This is the lowest-lying compound computed.`);
+    parts.push(row.gap > 0 ? `Band gap ≈ ${row.gap} eV (PBE, typically underestimated).` : 'Metallic (no band gap).');
+    parts.push(known ? 'This element combination is recorded experimentally (see PubChem / COD above), though not necessarily this exact formula.' : 'No experimental database records this element combination.');
+    parts.push(`ΔH is the DFT formation energy (${row.fe.toFixed(3)} eV/atom). ΔS is an additive estimate. Alexandria id ${row.id}.`);
+    r.note = parts.join(' ');
+    return r;
+  }
+
+  function atlasHTML(syms, rec, T) {
+    const names = syms.map((x) => BY_SYMBOL[x].name).join(' + ');
+    const known = !!(rec && (rec.pubchem || rec.cod));
+    const jarvis = Theory.infoFor(syms);
+    const computed = !!(rec && rec.alexandria) || !!jarvis;
+    let verdict;
+    if (known) verdict = ['st-stable', 'Known combination'];
+    else if (computed) verdict = ['st-meta', 'Only explored theoretically'];
+    else verdict = ['st-unstable', 'Not in any database'];
+    const items = [];
+    items.push(rec && rec.pubchem
+      ? `<li><strong>PubChem</strong>: ${rec.pubchem.count.toLocaleString()} compound record${rec.pubchem.count > 1 ? 's' : ''} contain exactly these elements. Example: <a href="${PUBCHEM_URL(rec.pubchem.cid)}" target="_blank" rel="noopener">${fmtFormula(rec.pubchem.formula)} (CID ${rec.pubchem.cid})</a>.</li>`
+      : '<li><strong>PubChem</strong>: no compound record with exactly these elements.</li>');
+    items.push(rec && rec.cod
+      ? `<li><strong>Crystallography Open Database</strong>: ${rec.cod.count.toLocaleString()} experimentally determined crystal structure${rec.cod.count > 1 ? 's' : ''}, e.g. ${fmtFormula(rec.cod.formula)}.</li>`
+      : '<li><strong>Crystallography Open Database</strong>: no measured crystal structure.</li>');
+    items.push(rec && rec.alexandria
+      ? `<li><strong>Alexandria (DFT)</strong>: ${rec.alexandria.computed.toLocaleString()} compound${rec.alexandria.computed > 1 ? 's' : ''} computed, ${rec.alexandria.stable} on the convex hull.</li>`
+      : '<li><strong>Alexandria (DFT)</strong>: never computed.</li>');
+    items.push(jarvis
+      ? `<li><strong>JARVIS-DFT (NIST)</strong>: ${jarvis.compounds} compound${jarvis.compounds > 1 ? 's' : ''} computed, ${jarvis.stable} stable (details above).</li>`
+      : '<li><strong>JARVIS-DFT (NIST)</strong>: never computed.</li>');
+
+    let html = `<div class="section-head"><h3>Across every database: ${esc(names)} <span class="badge ${verdict[0]}">${verdict[1]}</span></h3>
+      <p>What the largest open chemistry databases record for compounds made of exactly these ${syms.length} elements.</p></div>
+      <div class="rx"><ul class="sources">${items.join('')}</ul></div>`;
+
+    if (rec && rec.alexandria && rec.alexandria.rows.length) {
+      html += rec.alexandria.rows.map((row) => reactionHTML(alexReaction(row, known), T)).join('');
+    }
+    if (!computed) {
+      const m = Atlas.predict(syms);
+      if (m.outside) {
+        html += `<div class="rx"><div class="rx-top"><div class="rx-name">Model prediction</div><span class="badge q-none">Out of range</span></div>
+          <p class="rx-note">The prediction model was not trained on ${m.outside.map((x) => BY_SYMBOL[x].name).join(', ')}, so it cannot judge this combination. ${m.outside.some((x) => BY_SYMBOL[x].category === 'ng') ? 'The noble gases were left out because the DFT databases hardly ever computed them.' : 'Elements beyond plutonium appear in no training data.'}</p></div>`;
+      } else {
+        const pct = Math.round(m.probability * 100);
+        const cls = m.probability >= 0.5 ? 'st-stable' : m.probability >= 0.25 ? 'st-meta' : 'st-unstable';
+        const metrics = Atlas.MODEL.metrics;
+        html += `<div class="rx">
+          <div class="rx-top"><div class="rx-name">Model prediction: ${esc(names)}</div><span class="badges"><span class="badge ${cls}">${pct}% likely to form a stable compound</span><span class="badge q-estimated">Machine-learning estimate</span></span></div>
+          <div class="thermo">
+            <div><div class="lbl">Chance of a stable compound</div><div class="val">${pct}%</div><div class="unit">classifier</div></div>
+            <div><div class="lbl">Lowest ΔH<sub>f</sub> per atom</div><div class="val ${signClass(m.feKj)}">${fmtNum(m.feKj, 0)}</div><div class="unit">kJ/mol (≈ ${m.fe.toFixed(2)} eV)</div></div>
+            <div><div class="lbl">Typical error</div><div class="val">±${fmtNum(m.mae * Atlas.EV_TO_KJ, 0)}</div><div class="unit">kJ/mol per atom</div></div>
+          </div>
+          <p class="rx-note">No database has explored this combination, so this is a theoretical estimate. A gradient-boosted model, trained on ${(680189).toLocaleString()} combinations that Alexandria did compute, uses only the elements' properties (electronegativity, size, position in the table, ionisation energy and so on). On combinations it had not seen, it ranks stable systems above unstable ones ${Math.round(metrics.auc * 100)}% of the time (AUC ${metrics.auc}). It cannot name the formula or the crystal structure, so no balanced equation or ΔS is given.${m.extrapolated ? ' It was trained on up to 4 elements, so a prediction for more is an extrapolation.' : ''}</p>
+        </div>`;
+      }
+    }
+    return html;
+  }
+
+  async function renderAtlas(syms, T) {
+    const token = ++atlasToken;
+    const key = Atlas.keyOf(syms);
+    let rec;
+    try {
+      rec = atlasCache.has(key) ? atlasCache.get(key) : await Atlas.lookup(syms);
+      atlasCache.set(key, rec);
+    } catch (err) {
+      const slot = $('#atlas-slot');
+      if (slot && token === atlasToken) slot.innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+      return;
+    }
+    const slot = $('#atlas-slot');
+    if (slot && token === atlasToken) slot.innerHTML = atlasHTML(syms, rec, T);
   }
 
   /* ---------- state ---------- */
@@ -334,6 +434,17 @@
   }
 
   let PAIR_CLASS = null;
+  // Measured data first, then experimental records (PubChem, COD), then DFT, then the simple rules.
+  function pairClass(a, b) {
+    const c = Engine.classifyPair(a, b);
+    if (c === 'data' || c === 'same') return c;
+    const p = Atlas.PAIRS[Atlas.keyOf([a, b])];
+    if (p && (p.pubchem || p.cod)) return 'known';
+    if (c === 'dft' || (p && p.stable)) return 'dft';
+    if (c === 'dft-none' || (p && p.computed)) return 'dft-none';
+    return c;
+  }
+
   function pairClasses() {
     if (PAIR_CLASS) return PAIR_CLASS;
     const n = ELEMENTS.length;
@@ -341,7 +452,7 @@
     for (let i = 0; i < n; i += 1) {
       PAIR_CLASS[i] = [];
       for (let j = 0; j < n; j += 1) {
-        PAIR_CLASS[i][j] = j < i ? PAIR_CLASS[j][i] : Engine.classifyPair(ELEMENTS[i].symbol, ELEMENTS[j].symbol);
+        PAIR_CLASS[i][j] = j < i ? PAIR_CLASS[j][i] : pairClass(ELEMENTS[i].symbol, ELEMENTS[j].symbol);
       }
     }
     return PAIR_CLASS;
@@ -357,7 +468,8 @@
       `<span><strong>${NUCLIDE_COUNT.toLocaleString()}</strong> known isotopes (${nStable} stable)</span>`,
       `<span><strong>${COMPOUNDS.length}</strong> tabulated compounds</span>`,
       `<span><strong>${Theory.SETS.filter((x) => x.size > 1).length.toLocaleString()}</strong> combinations computed theoretically (${Theory.ENTRIES.length.toLocaleString()} compounds)</span>`,
-      `<span><strong>7,021</strong> element pairs: <strong>${counts.data}</strong> measured, <strong>${(counts.dft || 0) + (counts['dft-none'] || 0)}</strong> computed (DFT), <strong>${counts.predicted || 0}</strong> rule-based estimates</span>`,
+      `<span><strong>${Atlas.SUMMARY.combinations.toLocaleString()}</strong> combinations found across PubChem, COD and Alexandria</span>`,
+      `<span><strong>7,021</strong> element pairs: <strong>${(counts.data || 0) + (counts.known || 0)}</strong> known experimentally, <strong>${(counts.dft || 0) + (counts['dft-none'] || 0)}</strong> only computed</span>`,
     ].join('');
     return counts;
   }
@@ -365,7 +477,8 @@
   /* ---------- combination map ---------- */
 
   const MAP_CLASSES = [
-    ['data', 'Measured compound(s)'],
+    ['data', 'Measured ΔH° and S° on this site'],
+    ['known', 'Recorded in PubChem or COD'],
     ['dft', 'DFT: compound predicted to form'],
     ['dft-none', 'DFT: computed, no stable compound'],
     ['predicted', 'Predicted compound (estimate)'],
@@ -608,6 +721,64 @@
       </div>`;
   }
 
+  function atlasOverviewHTML() {
+    const S = Atlas.SUMMARY;
+    const M = Atlas.MODEL;
+    const sizeName = { 2: 'Pairs', 3: 'Triples', 4: '4 elements', 5: '5 elements', 6: '6 elements', 7: '7 elements', 8: '8 or more' };
+    const pct = (a, b) => {
+      if (!b) return '—';
+      const r = (100 * a) / b;
+      return r < 0.01 ? '&lt;0.01%' : `${r.toFixed(r < 1 ? 2 : 1)}%`;
+    };
+    const rows = Object.keys(S.bySize).map((k) => {
+      const b = S.bySize[k];
+      return `<tr><td>${sizeName[k]}</td><td class="num">${b.possible ? b.possible.toLocaleString() : '—'}</td><td class="num">${b.seen.toLocaleString()}</td>
+        <td class="num">${b.known.toLocaleString()} <span class="muted">(${pct(b.known, b.possible)})</span></td><td class="num">${b.computed.toLocaleString()}</td>
+        <td class="num">${b.stable.toLocaleString()}</td><td class="num">${b.stableUnknown.toLocaleString()}</td></tr>`;
+    }).join('');
+    const link = (key) => `<a href="#" data-open="${key.split('-').join('+')}">${key.split('-').join(' + ')}</a>`;
+    const newStable = S.newStable.filter((r) => r[0].split('-').length <= 3).slice(0, 12)
+      .map(([key, formula, fe]) => `<li>${link(key)}: ${fmtFormula(formula)}, ${fmtNum(fe * Atlas.EV_TO_KJ, 0)} kJ/mol per atom</li>`).join('');
+    const promising = M.promising[3].top.slice(0, 12)
+      .map(([key, p, fe]) => `<li>${link(key)}: ${Math.round(p * 100)}% chance, ΔH<sub>f</sub> ≈ ${fmtNum(fe * Atlas.EV_TO_KJ, 0)} kJ/mol per atom</li>`).join('');
+    const bs = M.metrics.bySize;
+    return `
+      <div class="table-scroll" style="max-height:none">
+        <table class="ctable">
+          <thead><tr><th>Combination</th><th class="num">Possible</th><th class="num">In any database</th><th class="num">Known experimentally</th><th class="num">Computed (DFT)</th><th class="num">DFT: stable compound</th><th class="num">Stable, never recorded</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="muted">"Known experimentally" means at least one PubChem record or COD crystal structure contains exactly these elements. PubChem also holds some unusual or theoretical entries, so a record is not proof that a stable bulk compound exists.</p>
+      <div class="insights">
+        <div class="ins-card">
+          <h3>Theorising the unexplored</h3>
+          <p>All pairs among the model's ${M.trained.length} elements have been computed somewhere. Of the triples, <strong>${M.promising[3].unexplored.toLocaleString()}</strong> have never been explored, and the model expects <strong>${M.promising[3].likelyStable}</strong> of them to form a stable compound. Any combination of up to 7 elements can be scored in the reaction lab.</p>
+          <p>Accuracy on ${M.metrics.heldOut.toLocaleString()} held-out combinations: AUC ${M.metrics.auc} overall (pairs ${bs[2].auc}, triples ${bs[3].auc}, quadruples ${bs[4].auc}). Lowest formation energy is predicted to within ${fmtNum(M.metrics.feMae * Atlas.EV_TO_KJ, 0)} kJ/mol per atom on average.</p>
+          <p class="muted">Not covered: ${M.excluded.join(', ')} (too few training examples), and elements beyond plutonium.</p>
+        </div>
+        <div class="ins-card">
+          <h3>Most promising unexplored triples</h3>
+          <p class="muted">No database has computed these. Model estimates.</p>
+          <ul class="tight">${promising}</ul>
+        </div>
+        <div class="ins-card">
+          <h3>Stable by DFT, but never recorded</h3>
+          <p class="muted">On Alexandria's convex hull, with no PubChem record or COD structure for the element combination. Candidates for synthesis, or DFT artefacts.</p>
+          <ul class="tight">${newStable}</ul>
+        </div>
+        <div class="ins-card">
+          <h3>Sources</h3>
+          <ul class="tight">
+            <li>PubChem: ${S.sources.pubchem.compounds.toLocaleString()} compounds, ${S.sources.pubchem.sets.toLocaleString()} element combinations</li>
+            <li>COD: ${S.sources.cod.structures.toLocaleString()} structures, ${S.sources.cod.sets.toLocaleString()} combinations</li>
+            <li>Alexandria: ${S.sources.alexandria.entries.toLocaleString()} calculations, ${S.sources.alexandria.stable.toLocaleString()} stable compounds, ${S.sources.alexandria.sets.toLocaleString()} combinations</li>
+            <li>JARVIS-DFT: ${Theory.ENTRIES.length.toLocaleString()} compounds, ${Theory.SETS.length.toLocaleString()} combinations</li>
+          </ul>
+        </div>
+      </div>`;
+  }
+
   function filterExplorer() {
     const raw = $('#x-elements').value.trim();
     const want = raw ? raw.split(/[\s,+\-]+/).filter(Boolean).map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase()) : [];
@@ -660,6 +831,7 @@
     document.querySelector('[data-tab="theory"]').addEventListener('click', () => {
       if (built) return;
       built = true;
+      $('#atlas-overview').innerHTML = atlasOverviewHTML();
       $('#insights').innerHTML = insightsHTML();
       filterExplorer();
     });
@@ -668,6 +840,12 @@
     $('#x-body').addEventListener('click', (ev) => {
       const tr = ev.target.closest('tr[data-set]');
       if (tr) openSet(tr.dataset.set);
+    });
+    $('#atlas-overview').addEventListener('click', (ev) => {
+      const a = ev.target.closest('[data-open]');
+      if (!a) return;
+      ev.preventDefault();
+      openSet(a.dataset.open);
     });
     $('#insights').addEventListener('click', (ev) => {
       const a = ev.target.closest('[data-open]');

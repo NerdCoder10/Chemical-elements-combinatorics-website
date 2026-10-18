@@ -68,8 +68,13 @@
 
     <!-- THEORY -->
     <section id="tab-theory" class="tab-panel" hidden>
+      <div class="card" style="margin-bottom:16px">
+        <h2>Every database, combined</h2>
+        <p>Every element combination found in PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations). Combinations no database has explored are scored by a model trained on the explored ones.</p>
+        <div id="atlas-overview"><p class="muted">Loading…</p></div>
+      </div>
       <div class="card">
-        <h2>Theoretical results for tens of thousands of combinations</h2>
+        <h2>JARVIS-DFT in detail: 32,619 combinations</h2>
         <p>Most element combinations have never been made in a lab. For these, the site uses quantum-mechanical (density functional theory, DFT) calculations from NIST's JARVIS-DFT database: the computed energy of each hypothetical compound, compared against every competing compound to decide whether it should form. Click any row to open it in the reaction lab.</p>
         <div id="insights"><p class="muted">Loading…</p></div>
       </div>
@@ -146,6 +151,10 @@
           <dd>No tabulated compound. A formula is predicted from the most common oxidation states. ΔH is estimated with Pauling's electronegativity relation (ΔH<sub>f</sub> ≈ −96.5 kJ/mol × bonds × Δχ²), and ΔS with additive atomic entropies. These are order-of-magnitude values only, and the predicted compound may not exist in exactly that form.</dd>
           <dt><span class="badge q-dft">Computed (DFT)</span></dt>
           <dd>A theoretical result from density functional theory (JARVIS-DFT, NIST, OptB88vdW functional), available for 32,619 element combinations and 65,307 compounds. ΔH is the computed formation energy (at about 0 K). Whether a compound is <em>stable</em> is decided by the convex hull: the compound must be lower in energy than every mixture of competing compounds with the same overall composition. This site recomputes that hull itself from the formation energies. ΔS is an additive estimate. The Theory explorer tab shows how well these predictions match experiment.</dd>
+          <dt><span class="badge q-dft">Computed (Alexandria DFT)</span> and the database check</dt>
+          <dd>For every combination of 2 or more elements, the lab also reports what the largest open databases hold for exactly those elements: PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations, with stability judged against its own convex hull). Together they contain 817,518 distinct combinations. Their stable compounds are shown with balanced formation reactions.</dd>
+          <dt><span class="badge q-estimated">Machine-learning estimate</span></dt>
+          <dd>Where no database has explored a combination, a gradient-boosted model trained on the 680,189 combinations Alexandria did compute estimates the chance that a stable compound exists and its lowest formation energy. It uses only element properties, so it cannot name a formula, and it excludes the noble gases He–Xe and elements beyond plutonium, which lack training data. Its held-out accuracy is shown in the Theory explorer.</dd>
           <dt><span class="badge q-none">No reaction</span></dt>
           <dd>Noble gases (apart from a few xenon and krypton compounds), or an element combined with itself when it has no other allotrope. Nothing changes, so ΔH° = ΔS° = 0.</dd>
           <dt><span class="badge q-nuclear">Nuclear</span></dt>
@@ -163,6 +172,9 @@
         <ul>
           <li>NIST-JANAF Thermochemical Tables; CODATA Key Values for Thermodynamics (1989)</li>
           <li>CRC Handbook of Chemistry and Physics, “Standard Thermodynamic Properties of Chemical Substances”</li>
+          <li>PubChem: S. Kim <em>et al.</em>, “PubChem 2025 update”, Nucleic Acids Res. (2025); compound formulas from the NCBI FTP site (CID-Mass).</li>
+          <li>Crystallography Open Database: S. Gražulis <em>et al.</em>, J. Appl. Cryst. 54, 661 (2021), via the JARVIS mirror.</li>
+          <li>Alexandria: J. Schmidt <em>et al.</em>, Adv. Mater. 35, 2210788 (2023); PBE release 2025.07.02, https://alexandria.icams.rub.de.</li>
           <li>Theory: K. Choudhary <em>et al.</em>, “The joint automated repository for various integrated simulations (JARVIS) for data-driven materials design”, npj Comput. Mater. 6, 173 (2020). Convex hulls computed with pymatgen.</li>
           <li>Isotopes: F.G. Kondev <em>et al.</em>, “The NUBASE2020 evaluation of nuclear physics properties”, Chin. Phys. C 45, 030001 (2021)</li>
           <li>IUPAC standard atomic weights</li>
@@ -180,6 +192,9 @@
   <script src="js/dft.js"></script>
   <script src="js/theory.js"></script>
   <script src="js/engine.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/atlas-summary.js"></script>
+  <script src="js/atlas.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

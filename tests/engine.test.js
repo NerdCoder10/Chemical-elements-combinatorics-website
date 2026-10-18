@@ -118,6 +118,17 @@ test('DFT predictions: tens of thousands of combinations, NaCl stable and known'
   assert.ok(s && s.reactions.length > 0 && s.reactions.every((r) => r.dH < 0 || r.dft.fe >= 0));
 });
 
+test('atlas: model in the browser matches scikit-learn; chunk hashing matches the build', () => {
+  const A = require('../js/atlas.js');
+  A.MODEL.checks.forEach(([key, p, fe]) => {
+    const r = A.predict(key.split('-'));
+    assert.ok(Math.abs(r.probability - p) < 1e-6 && Math.abs(r.fe - fe) < 1e-6, key);
+  });
+  assert.deepStrictEqual(A.predict(['Ne', 'F']).outside, ['Ne']);
+  assert.ok(A.SUMMARY.combinations > 800000);
+  assert.strictEqual(A.bucketOf('Cl-Na'), 0x4a849bc0 % 64); // FNV-1a, same as scripts/atlas/build_atlas.py
+});
+
 test('D-T fusion releases 17.59 MeV', () => {
   const [r] = E.nuclearReactions(['2H', '3H']);
   assert.strictEqual(r.Q, 17.59);
@@ -126,4 +137,18 @@ test('D-T fusion releases 17.59 MeV', () => {
   assert.strictEqual(E.nuclearReactions(['2H']).length, 1);
 });
 
-console.log(`${passed} tests passed${process.exitCode ? ', some FAILED' : ''}`);
+(async () => {
+  const A = require('../js/atlas.js');
+  try {
+    const nacl = await A.lookup(['Na', 'Cl']);
+    assert.ok(nacl.pubchem.count > 0 && nacl.cod.count > 0 && nacl.alexandria.rows.some((r) => r.formula === 'NaCl' && r.ehull === 0));
+    const fayalite = await A.lookup(['Fe', 'Si', 'O']);
+    assert.ok(fayalite.alexandria.rows.some((r) => r.formula === 'Fe2SiO4'));
+    assert.strictEqual(await A.lookup(['Fe', 'Gd', 'S']), null);
+    passed += 1;
+  } catch (err) {
+    console.error(`FAIL: atlas lookup\n  ${err.message}`);
+    process.exitCode = 1;
+  }
+  console.log(`${passed} tests passed${process.exitCode ? ', some FAILED' : ''}`);
+})();
