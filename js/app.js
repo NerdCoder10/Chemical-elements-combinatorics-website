@@ -746,5 +746,32 @@
     renderInfo(state.tray[0].symbol);
   }
 
+  /* ---------- installable app (PWA) ---------- */
+
+  function initInstall() {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register('sw.js').catch(() => {}); // refused inside some embeds; the page works without it
+    }
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    if (standalone) return;
+    let deferred = null;
+    window.addEventListener('beforeinstallprompt', (ev) => {
+      ev.preventDefault();
+      deferred = ev;
+      $('#install').hidden = false;
+    });
+    $('#install').addEventListener('click', async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      await deferred.userChoice.catch(() => null);
+      deferred = null;
+      $('#install').hidden = true;
+    });
+    window.addEventListener('appinstalled', () => { $('#install').hidden = true; });
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios && /^https?:$/.test(location.protocol)) $('#install-ios').hidden = false;
+  }
+
   init();
+  initInstall();
 })();

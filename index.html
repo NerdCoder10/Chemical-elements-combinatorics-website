@@ -6,11 +6,22 @@
   <title>Element Combinator</title>
   <meta name="description" content="Pick any of the 118 chemical elements and their isotopes, combine them, and see what forms: balanced equation, ΔH°, ΔS° and ΔG°.">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1f3d8c">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Elements">
 </head>
 <body>
   <header class="site-header">
     <div class="wrap">
-      <h1>Element Combinator</h1>
+      <div class="title-row">
+        <h1>Element Combinator</h1>
+        <button id="install" class="btn install" hidden>Install app</button>
+      </div>
+      <p id="install-ios" class="hint" hidden>To install on iPhone or iPad: tap the Share button, then “Add to Home Screen”.</p>
       <p class="lede">Click elements to drop them into the reaction tray. Pick an isotope if you like. You'll see what forms (or why nothing does), with the balanced equation, ΔH°, ΔS° and ΔG°.</p>
       <div class="stats" id="stats"></div>
       <nav class="tabs" role="tablist">
