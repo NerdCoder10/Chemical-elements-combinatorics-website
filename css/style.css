@@ -64,7 +64,7 @@ body {
   color: var(--text);
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-.wrap { max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+.wrap { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
 h1 { font-size: 1.9rem; letter-spacing: -.01em; }
 h2 { font-size: 1.15rem; }
@@ -72,7 +72,7 @@ h3 { font-size: 1rem; margin-top: 1.2em; }
 .muted { color: var(--muted); }
 sub, sup { line-height: 0; }
 
-.site-header { padding: 24px 0 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+.site-header { padding: calc(24px + env(safe-area-inset-top, 0px)) 0 0; background: var(--surface); border-bottom: 1px solid var(--border); }
 .lede { color: var(--muted); max-width: 70ch; margin: 0 0 12px; }
 .stats { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 14px; font-size: .9rem; color: var(--muted); }
 .stats strong { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -286,3 +286,34 @@ input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: -
 .sources { margin: 0; padding-left: 18px; font-size: .88rem; display: grid; gap: 6px; }
 .sources a, .atlas-card a { color: var(--accent); }
 .section-head h3 .badge { vertical-align: middle; margin-left: 4px; }
+
+/* ---------- app shell: tabs, install card, touch ---------- */
+button, .el, .tab, select, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.tab { display: inline-flex; align-items: center; gap: 6px; }
+.tab-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: none; }
+.tab-short { display: none; }
+
+.ios-install { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; padding: 12px 14px; border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--text); font-size: .88rem; }
+.ios-install[hidden] { display: none; }
+.ios-install img { border-radius: 10px; flex: none; }
+.ios-install-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.share-glyph { width: 17px; height: 17px; vertical-align: -3px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ios-close { flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+
+/* Installed on a phone: native-style bottom tab bar, clear of the home indicator. */
+@media (max-width: 760px) {
+  html.standalone .lede, html.standalone .stats { display: none; }
+  html.standalone body { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  html.standalone .site-footer { display: none; }
+  html.standalone .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    background: var(--surface); border-top: 1px solid var(--border); overflow: visible;
+    padding: 4px max(4px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+  }
+  html.standalone .tab { flex-direction: column; gap: 2px; padding: 6px 2px 4px; border-bottom: 0; font-size: .68rem; min-width: 0; }
+  html.standalone .tab.active { font-weight: 600; }
+  html.standalone .tab-icon { display: block; width: 22px; height: 22px; }
+  html.standalone .tab-long { display: none; }
+  html.standalone .tab-short { display: block; }
+}

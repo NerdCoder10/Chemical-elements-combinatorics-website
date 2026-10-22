@@ -883,7 +883,9 @@
 
     document.querySelector('.tabs').addEventListener('click', (ev) => {
       const t = ev.target.closest('.tab');
-      if (t) showTab(t.dataset.tab);
+      if (!t) return;
+      showTab(t.dataset.tab);
+      if (document.documentElement.classList.contains('standalone')) window.scrollTo(0, 0);
     });
     $('#search').addEventListener('input', (ev) => applySearch(ev.target.value));
     $('#search').addEventListener('keydown', (ev) => {
@@ -930,8 +932,11 @@
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
       navigator.serviceWorker.register('sw.js').catch(() => {}); // refused inside some embeds; the page works without it
     }
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    if (standalone) return;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (standalone) {
+      document.documentElement.classList.add('standalone'); // switches on the bottom tab bar
+      return;
+    }
     let deferred = null;
     window.addEventListener('beforeinstallprompt', (ev) => {
       ev.preventDefault();
@@ -947,7 +952,13 @@
     });
     window.addEventListener('appinstalled', () => { $('#install').hidden = true; });
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (ios && /^https?:$/.test(location.protocol)) $('#install-ios').hidden = false;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem('install-ios-dismissed') === '1'; } catch (e) { /* storage blocked */ }
+    if (ios && /^https?:$/.test(location.protocol) && !dismissed) $('#install-ios').hidden = false;
+    $('#install-ios-close').addEventListener('click', () => {
+      $('#install-ios').hidden = true;
+      try { localStorage.setItem('install-ios-dismissed', '1'); } catch (e) { /* storage blocked */ }
+    });
   }
 
   init();
