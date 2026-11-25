@@ -1,6 +1,6 @@
 /*
  * Reaction engine: formula parsing, balancing of formation reactions,
- * ΔH°/ΔS°/ΔG° calculation, and rule-based predictions for combinations that
+ * ΔH°/ΔS°/ΔG° calculation, and the DFT results for combinations that
  * have no tabulated data.
  */
 (function (root) {
@@ -12,12 +12,6 @@
   const R = 8.314462618; // J/(mol·K)
   const T0 = 298.15;
   const MEV_TO_KJ_PER_MOL = 9.648533e7;
-  // Rough contribution to a solid compound's S° from an atom of an element that is a gas
-  // (or a molecular liquid) in its standard state. Cf. Latimer's additivity rules.
-  const ANION_S_CONTRIBUTION = 25;
-  // Pauling: ΔHf ≈ -96.5 kJ/mol × Σ(Δχ)² over bonds. Crude, often off by 30-50 %.
-  const PAULING_K = 96.5;
-  const NOBLE_METALS = ['Au', 'Pt', 'Ir', 'Rh', 'Pd', 'Os', 'Ru', 'Ag'];
 
   /* ---------- formulas ---------- */
 
@@ -79,18 +73,6 @@
     return { formula: e.refFormula, atomicity: e.atomicity, phase: e.state, S: e.S };
   }
 
-  function estimateCompoundS(counts) {
-    let s = 0;
-    for (const sym of Object.keys(counts)) {
-      const e = BY_SYMBOL[sym];
-      if (!e) return null;
-      const perAtom = e.atomicity === 1 && e.state !== 'g' ? e.S : ANION_S_CONTRIBUTION;
-      if (perAtom == null) return null;
-      s += perAtom * counts[sym];
-    }
-    return s;
-  }
-
   /**
    * Formation reaction: elements in their standard states -> compound, balanced with the
    * smallest whole-number coefficients. Returns ΔH° (kJ) and ΔS° (J/K) for the reaction as written.
@@ -111,12 +93,9 @@
     }));
     const right = [{ coef: mult, formula: compound.formula, phase: compound.phase }];
 
-    let sCompound = compound.S;
-    let sEstimated = !!compound.sEstimated;
-    if (sCompound == null) {
-      sCompound = estimateCompoundS(counts);
-      sEstimated = true;
-    }
+    // ΔS needs a measured S° for the compound; without one it stays unknown (never estimated).
+    const sCompound = compound.S;
+    const sEstimated = false;
     const sLeft = left.reduce((acc, r) => (acc == null || r.S == null ? null : acc + r.coef * r.S), 0);
     const dS = sCompound == null || sLeft == null ? null : mult * sCompound - sLeft;
     const dH = compound.dHf == null ? null : mult * compound.dHf;
@@ -133,7 +112,7 @@
       perCompound: mult,
       hEstimated: !!compound.hEstimated,
       sEstimated,
-      quality: compound.hEstimated ? 'estimated' : sEstimated ? 'partial' : 'tabulated',
+      quality: sCompound == null ? 'partial' : 'tabulated',
       ...extra,
     };
   }
@@ -193,49 +172,7 @@
     return out;
   }
 
-  /* ---------- predictions for untabulated pairs ---------- */
-
-  function anionCharge(e) {
-    if (e.symbol === 'H') return -1;
-    if (e.symbol === 'B') return -3;
-    if (e.group === 17) return -1;
-    if (e.group === 16) return -2;
-    if (e.group === 15) return -3;
-    if (e.group === 14) return -4;
-    return null;
-  }
-
-  function gcd(a, b) { return b ? gcd(b, a % b) : a; }
-
-  function predictBinary(a, b) {
-    // A metal is the electropositive partner even when its χ is higher (e.g. Pt in PtP₂, Au in AuH).
-    let [cat, an] = a.en <= b.en ? [a, b] : [b, a];
-    if (an.isMetal && !cat.isMetal) [cat, an] = [an, cat];
-    const q = anionCharge(an);
-    const ox = cat.ox.find((x) => x > 0);
-    if (q == null || ox == null) return null;
-    const g = gcd(ox, -q);
-    const nCat = -q / g;
-    const nAn = ox / g;
-    const part = (s, n) => s + (n > 1 ? n : '');
-    const hydrideLike = cat.symbol === 'H' && (an.group === 14 || an.group === 15);
-    const formula = hydrideLike ? part(an.symbol, nAn) + part(cat.symbol, nCat) : part(cat.symbol, nCat) + part(an.symbol, nAn);
-    const dChi = Math.abs(an.en - cat.en);
-    const bonds = nCat * ox;
-    const ionic = cat.isMetal || dChi >= 1.7;
-    const counts = { [cat.symbol]: nCat, [an.symbol]: nAn };
-    return {
-      formula,
-      cation: cat,
-      anion: an,
-      ox,
-      q,
-      dChi,
-      ionic,
-      dHf: -PAULING_K * bonds * dChi * dChi,
-      S: estimateCompoundS(counts),
-    };
-  }
+  /* ---------- pairs ---------- */
 
   /**
    * Everything that is known or can be said about combining two different elements.
@@ -259,15 +196,15 @@
       };
     }
     if (status === 'noble') {
-      const ng = [a, b].find((e) => e.category === 'ng');
+      // Established: helium, neon and argon form no compounds at ordinary conditions.
+      const ng = [a, b].find((e) => ['He', 'Ne', 'Ar'].includes(e.symbol));
       const other = ng === a ? b : a;
       let extra = '';
-      if (ng.symbol === 'Kr' && other.symbol === 'F') extra = ' Exception: KrF₂ can be made in electric discharges at very low temperature, but it is endothermic and decomposes at room temperature.';
-      if (ng.symbol === 'Rn' && other.symbol === 'F') extra = ' Exception: radon fluoride is believed to form, but radon\'s radioactivity has kept it from being characterised.';
-      if (ng.symbol === 'Ar' && other.symbol === 'H') extra = ' (HArF exists only frozen in argon at below about 27 K.)';
+      if (ng.symbol === 'Ar' && other.symbol === 'H') extra = ' (HArF has been made, but it exists only frozen in solid argon below about 27 K.)';
+      if (ng.symbol === 'He' && other.symbol === 'Na') extra = ' (Na₂He has been made, but only at pressures above about 1.1 million atmospheres.)';
       return {
         status,
-        summary: `No reaction. ${ng.name} has a full valence shell and forms no stable compound with ${other.name} under normal conditions.${extra}`,
+        summary: `No reaction. ${ng.name} has a full shell of electrons, and no compound of it with ${other.name} has ever been made at ordinary conditions.${extra}`,
         reactions: [simpleReaction(
           [{ coef: 1, formula: a.refFormula, phase: a.state }, { coef: 1, formula: b.refFormula, phase: b.state }],
           [{ coef: 0, formula: 'no reaction', phase: '' }],
@@ -276,54 +213,11 @@
         )],
       };
     }
-    if (status === 'alloy') {
-      const amalgam = sa === 'Hg' || sb === 'Hg';
-      return {
-        status,
-        summary: amalgam
-          ? `Two metals: mercury dissolves many metals to form an amalgam, not a discrete salt-like compound.`
-          : `Two metals: no ionic or molecular compound forms. When melted together they give an alloy (a solid solution, or intermetallic phases at specific ratios), or they stay unmixed.`,
-        reactions: [simpleReaction(
-          [{ coef: 1, formula: a.symbol, phase: a.state }, { coef: 1, formula: b.symbol, phase: b.state }],
-          [{ coef: 1, formula: `${a.symbol}–${b.symbol}`, phase: amalgam ? 'amalgam' : 'alloy' }],
-          null, 2 * R * Math.log(2),
-          {
-            name: amalgam ? 'Amalgam formation' : 'Alloy formation (1 : 1 mixture)',
-            quality: 'estimated',
-            note: 'ΔH of mixing is small (typically a few kJ/mol) and depends on composition, so it is not tabulated here. ΔS° shown is the ideal entropy of mixing for 1 mol + 1 mol: 2R ln 2 ≈ 11.5 J/K.',
-          },
-        )],
-      };
-    }
-    const p = a.en != null && b.en != null ? predictBinary(a, b) : null;
-    if (!p) {
-      return { status: 'unknown', summary: `No tabulated data, and the simple valence rules do not give a reliable prediction for ${a.name} + ${b.name}.`, reactions: [] };
-    }
-    const compound = {
-      formula: p.formula,
-      phase: 's',
-      dHf: p.dHf,
-      S: p.S,
-      sEstimated: true,
-      hEstimated: true,
-      name: `Predicted: ${p.formula}`,
-    };
-    let note = `${p.cation.name} (χ = ${p.cation.en}) is treated as the cation and ${p.anion.name} (χ = ${p.anion.en}) as the anion. Using oxidation states ${p.cation.symbol}${sup(p.ox)} and ${p.anion.symbol}${sup(p.q)} gives the formula ${p.formula}. `
-      + `ΔH is a Pauling electronegativity estimate (−96.5 kJ/mol × bonds × Δχ²). ΔS assumes a solid product. Both are rough, order-of-magnitude values, and the compound may not exist in exactly this form.`;
-    if (!p.ionic) note += ' With Δχ < 1.7 the bonding would be mostly covalent, so the real product could be a molecule with a different formula.';
-    if (NOBLE_METALS.includes(p.cation.symbol)) note += ` ${p.cation.name} is a noble metal: in practice it resists attack, and many of its simple compounds are only marginally stable.`;
-    if (p.cation.radioactive || p.anion.radioactive) note += ' Radioactive element: little or no experimental thermochemistry exists.';
     return {
-      status: 'predicted',
-      summary: `No compound of ${a.name} and ${b.name} is in the database. Below is a rule-based prediction.`,
-      reactions: [formationReaction(compound, { note, quality: 'estimated' })],
+      status: 'unknown',
+      summary: `This site has no measured thermodynamic data for ${a.name} + ${b.name}. What the other databases record is shown below; if none of them has it either, the outcome is unknown.`,
+      reactions: [],
     };
-  }
-
-  function sup(n) {
-    const map = { '-': '⁻', '+': '⁺', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
-    const s = Math.abs(n) + (n < 0 ? '-' : '+');
-    return s.split('').map((c) => map[c] || c).join('');
   }
 
   function byStability(x, y) {
@@ -338,7 +232,7 @@
   }
 
   /**
-   * Outcome class for a pair: measured data first, then DFT predictions, then the simple rules.
+   * Outcome class for a pair: measured data first, then DFT calculations, then established facts.
    */
   function classifyPair(sa, sb) {
     if (sa === sb) return 'same';
@@ -348,14 +242,13 @@
     return ruleClass(sa, sb);
   }
 
+  /** What is known without data: only established facts, never estimates. */
   function ruleClass(sa, sb) {
     const a = BY_SYMBOL[sa];
     const b = BY_SYMBOL[sb];
     if (a.superheavy || b.superheavy) return 'superheavy';
-    if (a.category === 'ng' || b.category === 'ng') return 'noble';
-    if (a.isMetal && b.isMetal) return 'alloy';
-    if (a.en == null || b.en == null || !predictBinary(a, b)) return 'unknown';
-    return 'predicted';
+    if (['He', 'Ne', 'Ar'].includes(sa) || ['He', 'Ne', 'Ar'].includes(sb)) return 'noble';
+    return 'unknown';
   }
 
   /* ---------- nuclear reactions between specific isotopes ---------- */
@@ -407,7 +300,7 @@
     return m[1].split('').map((c) => supDigits[c]).join('') + m[2];
   }
 
-  /* ---------- theoretical (DFT) predictions ---------- */
+  /* ---------- quantum-mechanical (DFT) calculations ---------- */
 
   const DFT_SHOWN = 6;
   const PAIR_BREAKDOWN_MAX = 4; // with more elements the pair-by-pair list gets too long
@@ -422,7 +315,7 @@
     }, { quality: 'dft', dft: e });
     const parts = [Theory.stabilityText(e), Theory.gapText(e)];
     if (e.polymorphs > 1) parts.push(`${e.polymorphs} crystal structures were computed for this formula; the most stable one is shown.`);
-    parts.push(`ΔH is the DFT formation energy (${e.fe.toFixed(3)} eV/atom, ≈ 0 K). ΔS is an additive estimate assuming a solid product.`);
+    parts.push(`ΔH is the DFT formation energy (${e.fe.toFixed(3)} eV/atom, ≈ 0 K). DFT gives no entropy, so ΔS and ΔG are left blank.`);
     r.note = parts.filter(Boolean).join(' ');
     return r;
   }
@@ -439,19 +332,19 @@
     let summary;
     if (info.stable) {
       summary = `DFT computed ${info.compounds} compound${info.compounds > 1 ? 's' : ''} of ${names}. `
-        + `${info.stable} ${info.stable > 1 ? 'are' : 'is'} predicted thermodynamically stable`
-        + (info.hypothetical ? `, including ${info.hypothetical} with no experimental record (a theoretical prediction).` : '.');
+        + `${info.stable} ${info.stable > 1 ? 'are' : 'is'} calculated to be thermodynamically stable`
+        + (info.hypothetical ? `, including ${info.hypothetical} with no experimental record (calculated, never made).` : '.');
     } else if (info.status === 'metastable') {
       summary = `DFT computed ${info.compounds} compound${info.compounds > 1 ? 's' : ''} of ${names}. None is fully stable, but the best lies within ${info.best.ehull.toFixed(3)} eV/atom of the convex hull, so it may still be made.`;
     } else {
       summary = `DFT computed ${info.compounds} hypothetical compound${info.compounds > 1 ? 's' : ''} of ${names}, and none is stable.`
         + (syms.length > 2
           ? ' These elements would rather form simpler compounds (see the pairs) than a compound containing all of them.'
-          : ' These elements are predicted not to form a compound and would stay separate or mix.');
+          : ' By this calculation these elements do not form a compound and stay separate or mix.');
     }
     if (list.length > shown.length) summary += ` Showing the ${shown.length} lowest in energy.`;
     return {
-      title: `Theoretical prediction (DFT): ${syms.map((s) => s).join(' + ')}`,
+      title: `Quantum-mechanical calculation (DFT): ${syms.map((s) => s).join(' + ')}`,
       status: 'dft',
       summary,
       reactions: shown.map(dftReaction),
@@ -499,7 +392,7 @@
       const dft = dftSection(syms);
       let summary;
       if (exact.length) summary = `${exact.length} tabulated compound${exact.length > 1 ? 's' : ''} containing all ${syms.length} elements.`;
-      else if (dft) summary = `No measured data for a compound containing all ${syms.length} elements. See the theoretical prediction below.`;
+      else if (dft) summary = `No measured data for a compound containing all ${syms.length} elements. See the calculation below.`;
       else summary = `No compound containing all ${syms.length} of these elements has been measured or computed.${syms.length <= PAIR_BREAKDOWN_MAX ? ' The pairs below show what each pair forms.' : ''}`;
       sections.push({ title: names, status: exact.length ? 'data' : 'none', summary, reactions: exact });
       if (dft) sections.push(dft);
@@ -516,18 +409,15 @@
     return sections;
   }
 
-  /** Rule-based / measured result for a pair, merged with the DFT prediction where one exists. */
+  /** Measured result or established fact for a pair, merged with the DFT calculation where one exists. */
   function pairSections(sa, sb) {
     const title = `${BY_SYMBOL[sa].name} + ${BY_SYMBOL[sb].name}`;
     const base = { title, ...combinePair(sa, sb) };
     const dft = dftSection([sa, sb]);
     if (!dft) return [base];
     const forms = dft.info.status !== 'unstable';
-    if (base.status === 'predicted') return [{ ...dft, title }]; // DFT replaces the crude Pauling estimate
-    if (base.status === 'alloy' && forms) {
-      base.summary = 'Two metals. Besides simply mixing into an alloy, DFT predicts definite intermetallic compounds at fixed ratios:';
-      base.reactions = [];
-    }
+    void forms;
+    if (base.status === 'unknown') return [{ ...dft, title }]; // the calculation is what is known
     return [base, dft];
   }
 
@@ -541,7 +431,6 @@
     combinePair,
     combine,
     classifyPair,
-    predictBinary,
     dftSection,
     sameElementReactions,
     nuclearReactions,

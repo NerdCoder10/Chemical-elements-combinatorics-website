@@ -1,9 +1,9 @@
 /*
- * Theoretical (DFT) predictions for element combinations, from js/dft.js (JARVIS-DFT).
+ * Quantum-mechanical (DFT) calculations for element combinations, from js/dft.js (JARVIS-DFT).
  *
  * Each computed compound has a formation energy ΔHf (eV/atom, ~0 K) and an energy above the
  * convex hull, Ehull (eV/atom): how far it lies above the most stable mixture of competing
- * phases of the same overall composition. Ehull = 0 means DFT predicts the compound is
+ * phases of the same overall composition. Ehull = 0 means the DFT calculation finds the compound
  * thermodynamically stable.
  */
 (function (root) {
@@ -92,9 +92,9 @@
   function stabilityText(e) {
     if (e.fe >= 0) return `Positive formation energy (+${e.fe.toFixed(3)} eV/atom): the elements would not combine into this.`;
     if (e.ehull <= STABLE) {
-      return `On the convex hull: predicted thermodynamically stable. ${e.known
+      return `On the convex hull: calculated to be thermodynamically stable. ${e.known
         ? 'This structure has been observed experimentally (ICSD).'
-        : 'No experimentally determined structure is linked to it in the dataset, so it is either a genuinely new prediction or a known compound whose record is missing.'}`;
+        : 'No experimentally determined structure is linked to it in the dataset, so it has either only been calculated, never made, or it is a known compound whose record is missing.'}`;
     }
     const x = `${e.ehull.toFixed(3)} eV/atom (${(e.ehull * EV_TO_KJ).toFixed(1)} kJ/mol per atom) above the convex hull`;
     if (e.ehull <= METASTABLE) return `Metastable: ${x}. Compounds this close to the hull can often still be made.`;

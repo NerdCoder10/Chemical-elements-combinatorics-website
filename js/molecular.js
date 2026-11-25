@@ -413,7 +413,7 @@
     return { dHf: c.dHf, S: c.S, name: c.name, phase: c.phase };
   }
 
-  /** ΔH° (kJ) and ΔS° (J/K) for the reaction as written, from tabulated data or bond enthalpies. */
+  /** ΔH° (kJ) and ΔS° (J/K) for the reaction as written, from measured (tabulated) data only. */
   function thermoFor(eq) {
     let dH = 0;
     let dS = 0;
@@ -427,8 +427,6 @@
       }
     }
     if (complete) return { dH, dS, source: 'tabulated' };
-    const est = bondChanges(eq).dHestimate;
-    if (est != null) return { dH: est, dS: null, source: 'bond-enthalpy estimate' };
     return { dH: null, dS: null, source: 'unknown' };
   }
 
@@ -938,9 +936,9 @@
       const perEventEv = th.dH / KJ_PER_EV;
       const zj = (th.dH * 1000 / NA) * 1e21;
       const kind = th.dH < 0 ? 'releases' : 'absorbs';
-      parts.push(`<p>Each event ${kind} <strong>${fmt(Math.abs(perEventEv), 2)} eV</strong> (${fmt(Math.abs(zj), 0)} zJ). Scaled up to a mole of events that is ${fmt(Math.abs(th.dH), 1)} kJ.${th.source !== 'tabulated' ? ' <em>Estimated from average bond energies.</em>' : ''}</p>`);
+      parts.push(`<p>Each event ${kind} <strong>${fmt(Math.abs(perEventEv), 2)} eV</strong> (${fmt(Math.abs(zj), 0)} zJ). Scaled up to a mole of events that is ${fmt(Math.abs(th.dH), 1)} kJ (measured).</p>`);
     } else {
-      parts.push('<p>No energy data for this reaction, so the simulation treats it as thermoneutral (ΔH = 0).</p>');
+      parts.push('<p>ΔH for this reaction has not been measured for every substance in it, so it is shown as unknown, and the animation releases no reaction heat.</p>');
     }
     return parts.join('');
   }
@@ -949,7 +947,7 @@
     const th = sim.thermo;
     const G = th.dH != null && th.dS != null ? th.dH - (sim.T * th.dS) / 1000 : null;
     els.thermo.innerHTML = `
-      <div><div class="lbl">ΔH°</div><div class="val ${th.dH < 0 ? 'neg' : th.dH > 0 ? 'pos' : ''}">${fmt(th.dH)}</div><div class="unit">kJ${th.source === 'bond-enthalpy estimate' ? ', estimate' : ''}</div></div>
+      <div><div class="lbl">ΔH°</div><div class="val ${th.dH < 0 ? 'neg' : th.dH > 0 ? 'pos' : ''}">${fmt(th.dH)}</div><div class="unit">kJ${th.dH == null ? ', not measured' : ''}</div></div>
       <div><div class="lbl">ΔS°</div><div class="val">${fmt(th.dS)}</div><div class="unit">J/K</div></div>
       <div><div class="lbl">ΔG at ${Math.round(sim.T)} K</div><div class="val ${G < 0 ? 'neg' : G > 0 ? 'pos' : ''}">${fmt(G)}</div><div class="unit">kJ</div></div>`;
   }

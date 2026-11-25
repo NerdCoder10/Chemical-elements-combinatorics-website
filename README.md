@@ -20,8 +20,7 @@ It also works as-is on GitHub Pages. The URL hash holds the current selection, s
 - **Element details**: atomic weight, electronegativity, oxidation states, standard state, S°, and **all 3,339 known isotopes** (from NUBASE2020) with half-life, decay modes, natural abundance, atomic mass and discovery year.
 - **Theory explorer**: computed (DFT) results for **32,619 element combinations** (3,507 pairs, 19,785 triples, 7,841 quadruples, and 1,486 sets of 5–7 elements) covering 65,307 compounds. Filter and sort them, and read statistics computed from the whole dataset: which elements and families form the most compounds, the most exothermic ones, and stable compounds with no experimental record.
 - **Every database, combined**: for any combination of 2–7 elements, the lab reports what PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations) hold for exactly those elements: **817,518 distinct combinations** in total. Stable Alexandria compounds come with balanced formation reactions.
-- **Theorising the unknowns**: combinations no database has explored are scored by a gradient-boosted model trained on 680,189 computed combinations. It runs in the browser for any combination and gives the chance that a stable compound exists and its lowest formation energy. Held-out AUC is 0.90 (pairs 0.97). The noble gases He–Xe and elements beyond Pu are excluded for lack of training data.
-- **A prediction for any combination**: for every set of 2–7 of the 118 elements, the lab predicts what forms. It lists candidate formulas (charge-balanced with common oxidation states, or simple ratios for all-metal sets), scores each with a model trained on all 3.26 million compositions in Alexandria, and keeps those that lie below every mixture of the elements and simpler compounds (a predicted convex hull). Each result has a balanced equation, ΔH, ΔS and ΔG, or what the elements break down into instead. Checked through the same browser code on held-out combinations: pairs right 87% of the time about whether a compound forms (69% for a naive guess); triples 67% (59%). All 6,903 pairs are precomputed for the map.
+- **No guesses**: a combination that has never been measured or calculated is shown as *Unknown: never made or calculated*. The site does not estimate outcomes, and where only an energy was calculated (DFT), ΔS and ΔG are left blank instead of estimated.
 - **Installable app**: on GitHub Pages the site is a progressive web app. Install it from the browser (Android/desktop: "Install app"; iPhone: Share → Add to Home Screen), and it works offline.
 - **Molecules (atomic-level view)**: an animated 2D simulation of any reaction. Atoms are drawn in standard CPK colours and bonded into schematic structures. Molecules move at temperature-dependent speeds and react only when a collision beats the activation barrier, and their atoms visibly regroup into the products. Exothermic reactions heat the gas, so a spark can set off a chain reaction. Pick one of 12 examples, type any equation (it is balanced automatically), or tap **Watch it at the atomic level** on a reaction in the lab. Temperature, barrier, amount, heat retention and speed are adjustable, and the panel lists the bonds broken and formed and the energy per event.
 - **Real-world uses**: every reaction product shows what it is used for (with safety and environmental notes), on the lab's reaction cards and in the Molecules tab. All 191 tabulated compounds are covered; for anything else there is a link to PubChem.
@@ -32,10 +31,9 @@ It also works as-is on GitHub Pages. The URL hash holds the current selection, s
 | Case | What you get |
 |---|---|
 | Compound in the database (~190 compounds) | Measured ΔHf° and S° (NIST-JANAF / CODATA / CRC). The formation reaction is balanced automatically, and ΔH° and ΔS° are computed with Hess's law. |
-| Combination computed in JARVIS-DFT (NIST) | DFT formation energy for every computed compound. Stability comes from a convex hull recomputed by `scripts/build_dft.py` with pymatgen. Against 132 measured solids the mean error is ≈14 kJ/mol per atom, with the sign right in 132/132. 71% of experimentally known compounds come out exactly stable, and 93% lie within 0.1 eV/atom. ΔS is an additive estimate. |
-| Metal + nonmetal, or nonmetal + nonmetal, with no tabulated or computed data | A formula predicted from common oxidation states. ΔH comes from Pauling's electronegativity relation and ΔS from additive atomic entropies. These are **clearly labelled estimates**. |
-| Metal + metal | An alloy, not a compound. ΔS is the ideal entropy of mixing. ΔH of mixing is not tabulated. |
-| Noble gas (apart from Xe/Kr fluorides etc.) | No reaction: ΔH° = ΔS° = 0. |
+| Combination computed in JARVIS-DFT (NIST) | DFT formation energy for every computed compound. Stability comes from a convex hull recomputed by `scripts/build_dft.py` with pymatgen. Against 132 measured solids the mean error is ≈14 kJ/mol per atom, with the sign right in 132/132. 71% of experimentally known compounds come out exactly stable, and 93% lie within 0.1 eV/atom. DFT gives no entropy, so ΔS and ΔG are left blank. |
+| Helium, neon or argon | No compounds at ordinary conditions: ΔH° = ΔS° = 0. |
+| Never measured or calculated | Shown as unknown. Nothing is estimated. |
 | Same element twice | Bond formation from free atoms, or allotrope changes (O₂→O₃, graphite→diamond, white→grey tin). |
 | Elements 101–118 | Only made a few atoms at a time, so no bulk thermochemistry exists. |
 
@@ -51,14 +49,10 @@ js/isotopes.js      all known isotopes (GENERATED from data/nubase_4.mas20.txt)
 js/thermo.js        ΔHf° / S° database for compounds, atoms and allotropes
 js/dft.js           65,307 DFT-computed compounds (GENERATED by scripts/build_dft.py)
 js/theory.js        indexes the DFT data by element combination
-js/engine.js        formula parsing, balancing, thermodynamics, predictions
-js/model.js         trained model + element features (GENERATED by scripts/atlas/train_model.py)
+js/engine.js        formula parsing, balancing, thermodynamics
 js/atlas-summary.js atlas totals, all pairs, ranked lists (GENERATED by scripts/atlas/build_atlas.py)
 js/atlas/bNN.js     817,518 combination records in 64 chunks, loaded on demand (GENERATED)
-js/atlas.js         atlas lookups and in-browser model evaluation
-js/predict.js       prediction for any element set: candidates, model, convex hull
-js/composition-model.js  formula -> formation energy model (GENERATED, loaded on demand)
-js/pair-predictions.js   predictions for all 6,903 pairs (GENERATED)
+js/atlas.js         atlas lookups (what each database holds)
 js/uses.js          real-world uses and safety notes for compounds
 js/molecular.js     atomic-level reaction simulation (Molecules tab)
 js/app.js           UI
@@ -71,18 +65,13 @@ tests/engine.test.js
 To regenerate the isotope data: `python3 scripts/build_isotopes.py`.
 To regenerate the DFT data: `pip install pymatgen && python3 scripts/build_dft.py`. This downloads the JARVIS dataset (~48 MB, checksum-verified) into `data/cache/`, which is git-ignored.
 
-To rebuild the database atlas and model (needs `pip install pymatgen scikit-learn ijson`; downloads ~7 GB in total, streamed or cached in `data/cache/`):
+To rebuild the database atlas (needs `pip install ijson`; downloads ~7 GB in total, streamed or cached in `data/cache/`):
 
 ```sh
 python3 scripts/atlas/fetch_pubchem.py      # PubChem CID-Mass, MD5-verified
 python3 scripts/atlas/fetch_cod.py          # COD via JARVIS
 python3 scripts/atlas/fetch_alexandria.py   # 58 Alexandria files, in parallel
 python3 scripts/atlas/build_atlas.py
-python3 scripts/atlas/train_model.py
-python3 scripts/atlas/fetch_alexandria_compositions.py   # every composition's energy
-python3 scripts/atlas/train_composition_model.py
-node scripts/atlas/validate_predictions.js
-node scripts/atlas/build_pair_predictions.js
 ```
 
 Run the tests with `node tests/engine.test.js`.

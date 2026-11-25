@@ -219,20 +219,16 @@
           <dt><span class="badge q-tabulated">Tabulated</span></dt>
           <dd>The compound is in the database with measured ΔH<sub>f</sub>° and S°. The site balances the formation reaction (elements in their standard states → compound) and computes
             ΔH° = Σ ν ΔH<sub>f</sub>°(products) − Σ ν ΔH<sub>f</sub>°(reactants) and ΔS° = Σ ν S°(products) − Σ ν S°(reactants). Elements in their standard states have ΔH<sub>f</sub>° = 0 by definition.</dd>
-          <dt><span class="badge q-partial">ΔS estimated</span></dt>
-          <dd>ΔH<sub>f</sub>° is measured, but S° of the compound is not in the tables used, so S° is estimated by adding up per-atom contributions.</dd>
-          <dt><span class="badge q-estimated">Estimated</span></dt>
-          <dd>No tabulated compound. A formula is predicted from the most common oxidation states. ΔH is estimated with Pauling's electronegativity relation (ΔH<sub>f</sub> ≈ −96.5 kJ/mol × bonds × Δχ²), and ΔS with additive atomic entropies. These are order-of-magnitude values only, and the predicted compound may not exist in exactly that form.</dd>
+          <dt><span class="badge q-partial">ΔH tabulated · ΔS not measured</span></dt>
+          <dd>ΔH<sub>f</sub>° is measured, but S° of the compound is not in the tables used, so ΔS and ΔG are left blank rather than estimated.</dd>
           <dt><span class="badge q-dft">Computed (DFT)</span></dt>
-          <dd>A theoretical result from density functional theory (JARVIS-DFT, NIST, OptB88vdW functional), available for 32,619 element combinations and 65,307 compounds. ΔH is the computed formation energy (at about 0 K). Whether a compound is <em>stable</em> is decided by the convex hull: the compound must be lower in energy than every mixture of competing compounds with the same overall composition. This site recomputes that hull itself from the formation energies. ΔS is an additive estimate. The Theory explorer tab shows how well these predictions match experiment.</dd>
+          <dd>A theoretical result from density functional theory (JARVIS-DFT, NIST, OptB88vdW functional), available for 32,619 element combinations and 65,307 compounds. ΔH is the computed formation energy (at about 0 K). Whether a compound is <em>stable</em> is decided by the convex hull: the compound must be lower in energy than every mixture of competing compounds with the same overall composition. This site recomputes that hull itself from the formation energies. DFT gives energies, not entropies, so ΔS and ΔG are left blank. The Theory explorer tab shows how well these calculations match experiment.</dd>
           <dt><span class="badge q-dft">Computed (Alexandria DFT)</span> and the database check</dt>
-          <dd>For every combination of 2 or more elements, the lab also reports what the largest open databases hold for exactly those elements: PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations, with stability judged against its own convex hull). Together they contain 817,518 distinct combinations. Their stable compounds are shown with balanced formation reactions.</dd>
-          <dt><span class="badge q-estimated">Machine-learning estimate</span></dt>
-          <dd>Where no database has explored a combination, a gradient-boosted model trained on the 680,189 combinations Alexandria did compute estimates the chance that a stable compound exists and its lowest formation energy. It uses only element properties, so it cannot name a formula, and it excludes the noble gases He–Xe and elements beyond plutonium, which lack training data. Its held-out accuracy is shown in the Theory explorer.</dd>
-          <dt><span class="badge q-estimated">Model prediction</span> (any combination)</dt>
-          <dd>For every set of 2–7 elements the lab also shows what a model expects to form. It lists candidate formulas (ones that balance the charges of common ions, or simple ratios for all-metal sets), estimates each one's formation energy with gradient-boosted trees trained on every composition in the Alexandria DFT database, and reports the lowest. Its accuracy on element combinations it never saw is shown with each result. Elements with little training data (the noble gases, and everything beyond plutonium) are marked as very uncertain extrapolations; helium, neon and argon are treated as unreactive.</dd>
+          <dd>For every combination of 2 or more elements, the lab also reports what the largest open databases hold for exactly those elements: PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations, with stability judged against its own convex hull). Together they contain 817,518 distinct combinations. Their stable compounds are shown with balanced formation reactions. DFT gives energies but not entropies, so ΔS and ΔG are left blank for calculated results.</dd>
+          <dt><span class="badge q-none">Unknown</span></dt>
+          <dd>A combination that has never been measured or calculated is shown as unknown. The site does not estimate or predict outcomes it has no data for. A specific combination can be found out by a quantum-mechanical calculation; results calculated for this site are listed under "Calculated on request".</dd>
           <dt><span class="badge q-none">No reaction</span></dt>
-          <dd>Noble gases (apart from a few xenon and krypton compounds), or an element combined with itself when it has no other allotrope. Nothing changes, so ΔH° = ΔS° = 0.</dd>
+          <dd>Helium, neon and argon, which form no compounds at ordinary conditions, or an element combined with itself when it has no other allotrope. Nothing changes, so ΔH° = ΔS° = 0.</dd>
           <dt><span class="badge q-nuclear">Nuclear</span></dt>
           <dd>Only when you pick specific isotopes. Fusion and transmutation reactions are shown with their Q-value. ΔH is −Q per mole of events. These energies are about a million times larger than chemical ones.</dd>
         </dl>
@@ -254,7 +250,6 @@
           <li>Theory: K. Choudhary <em>et al.</em>, “The joint automated repository for various integrated simulations (JARVIS) for data-driven materials design”, npj Comput. Mater. 6, 173 (2020). Convex hulls computed with pymatgen.</li>
           <li>Isotopes: F.G. Kondev <em>et al.</em>, “The NUBASE2020 evaluation of nuclear physics properties”, Chin. Phys. C 45, 030001 (2021)</li>
           <li>IUPAC standard atomic weights</li>
-          <li>Pauling, <em>The Nature of the Chemical Bond</em> (electronegativity and the ΔH estimate)</li>
         </ul>
       </div>
     </section>
@@ -268,11 +263,8 @@
   <script src="js/dft.js"></script>
   <script src="js/theory.js"></script>
   <script src="js/engine.js"></script>
-  <script src="js/model.js"></script>
   <script src="js/atlas-summary.js"></script>
   <script src="js/atlas.js"></script>
-  <script src="js/predict.js"></script>
-  <script src="js/pair-predictions.js"></script>
   <script src="js/uses.js"></script>
   <script src="js/molecular.js"></script>
   <script src="js/app.js"></script>

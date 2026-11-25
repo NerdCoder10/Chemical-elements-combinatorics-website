@@ -199,13 +199,11 @@
 
   const QUALITY = {
     tabulated: ['q-tabulated', 'Tabulated data'],
-    partial: ['q-partial', 'ΔH tabulated · ΔS estimated'],
-    estimated: ['q-estimated', 'Estimated'],
+    partial: ['q-partial', 'ΔH tabulated · ΔS not measured'],
     none: ['q-none', 'No reaction'],
     nuclear: ['q-nuclear', 'Nuclear'],
     dft: ['q-dft', 'Computed (DFT)'],
     alex: ['q-dft', 'Computed (Alexandria DFT)'],
-    model: ['q-estimated', 'Model prediction'],
   };
 
   const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
@@ -216,7 +214,7 @@
       let extra = '';
       if (e.known === true) extra = '<span class="badge st-known">observed</span>';
       else if (e.known === false) extra = '<span class="badge st-new" title="No experimentally determined structure (ICSD) is linked to it">no experimental record</span>';
-      return `<span class="badge st-stable">predicted stable</span>${extra}`;
+      return `<span class="badge st-stable">calculated stable</span>${extra}`;
     }
     if (e.ehull <= Theory.METASTABLE) return '<span class="badge st-meta">metastable</span>';
     return '<span class="badge st-unstable">unstable</span>';
@@ -243,10 +241,10 @@
   }
 
   function reactionHTML(r, T) {
-    const [qc, ql] = QUALITY[r.quality] || QUALITY.estimated;
+    const [qc, ql] = QUALITY[r.quality] || QUALITY.tabulated;
     const G = r.kind === 'nuclear' ? r.dH : Engine.gibbs(r.dH, r.dS, T);
-    const hEst = r.hEstimated ? '<div class="est">estimate</div>' : r.dft ? '<div class="est">DFT, ≈ 0 K</div>' : '';
-    const sEst = r.sEstimated || (r.quality === 'estimated' && r.dS != null) ? '<div class="est">estimate</div>' : '';
+    const hEst = r.dft ? '<div class="est">DFT, ≈ 0 K</div>' : '';
+    const sEst = r.dS == null && r.kind !== 'nuclear' && r.quality !== 'none' ? `<div class="est">${r.dft ? 'not calculated' : 'not measured'}</div>` : '';
     const dSText = r.kind === 'nuclear' ? 'n/a' : fmtNum(r.dS, 1);
     const dHText = r.dH == null ? 'not tabulated' : fmtNum(r.dH, 1);
     let perMol = '';
@@ -325,7 +323,7 @@
       : `Not stable: ${row.ehull.toFixed(3)} eV/atom above the Alexandria convex hull. This is the lowest-lying compound computed.`);
     parts.push(row.gap > 0 ? `Band gap ≈ ${row.gap} eV (PBE, typically underestimated).` : 'Metallic (no band gap).');
     parts.push(known ? 'This element combination is recorded experimentally (see PubChem / COD above), though not necessarily this exact formula.' : 'No experimental database records this element combination.');
-    parts.push(`ΔH is the DFT formation energy (${row.fe.toFixed(3)} eV/atom). ΔS is an additive estimate. Alexandria id ${row.id}.`);
+    parts.push(`ΔH is the DFT formation energy (${row.fe.toFixed(3)} eV/atom). DFT gives no entropy, so ΔS and ΔG are left blank. Alexandria id ${row.id}.`);
     r.note = parts.join(' ');
     return r;
   }
@@ -360,25 +358,9 @@
     if (rec && rec.alexandria && rec.alexandria.rows.length) {
       html += rec.alexandria.rows.map((row) => reactionHTML(alexReaction(row, known), T)).join('');
     }
-    if (!computed) {
-      const m = Atlas.predict(syms);
-      if (m.outside) {
-        html += `<div class="rx"><div class="rx-top"><div class="rx-name">Model prediction</div><span class="badge q-none">Out of range</span></div>
-          <p class="rx-note">The prediction model was not trained on ${m.outside.map((x) => BY_SYMBOL[x].name).join(', ')}, so it cannot judge this combination. ${m.outside.some((x) => BY_SYMBOL[x].category === 'ng') ? 'The noble gases were left out because the DFT databases hardly ever computed them.' : 'Elements beyond plutonium appear in no training data.'}</p></div>`;
-      } else {
-        const pct = Math.round(m.probability * 100);
-        const cls = m.probability >= 0.5 ? 'st-stable' : m.probability >= 0.25 ? 'st-meta' : 'st-unstable';
-        const metrics = Atlas.MODEL.metrics;
-        html += `<div class="rx">
-          <div class="rx-top"><div class="rx-name">Model prediction: ${esc(names)}</div><span class="badges"><span class="badge ${cls}">${pct}% likely to form a stable compound</span><span class="badge q-estimated">Machine-learning estimate</span></span></div>
-          <div class="thermo">
-            <div><div class="lbl">Chance of a stable compound</div><div class="val">${pct}%</div><div class="unit">classifier</div></div>
-            <div><div class="lbl">Lowest ΔH<sub>f</sub> per atom</div><div class="val ${signClass(m.feKj)}">${fmtNum(m.feKj, 0)}</div><div class="unit">kJ/mol (≈ ${m.fe.toFixed(2)} eV)</div></div>
-            <div><div class="lbl">Typical error</div><div class="val">±${fmtNum(m.mae * Atlas.EV_TO_KJ, 0)}</div><div class="unit">kJ/mol per atom</div></div>
-          </div>
-          <p class="rx-note">No database has explored this combination, so this is a theoretical estimate. A gradient-boosted model, trained on ${(680189).toLocaleString()} combinations that Alexandria did compute, uses only the elements' properties (electronegativity, size, position in the table, ionisation energy and so on). On combinations it had not seen, it ranks stable systems above unstable ones ${Math.round(metrics.auc * 100)}% of the time (AUC ${metrics.auc}). It cannot name the formula or the crystal structure, so no balanced equation or ΔS is given.${m.extrapolated ? ' It was trained on up to 4 elements, so a prediction for more is an extrapolation.' : ''}</p>
-        </div>`;
-      }
+    if (!known && !computed && !Engine.compoundsFor(syms).length) {
+      html += `<div class="rx"><div class="rx-top"><div class="rx-name">Unknown: never made or calculated</div><span class="badge q-none">No data</span></div>
+        <p class="rx-note">No laboratory measurement and no quantum-mechanical calculation of compounds made of exactly ${esc(names)} exists in any of these databases, so what happens is not known. It can be found out by calculating it (see "Calculated on request" in Method &amp; sources) or by experiment.</p></div>`;
     }
     return html;
   }
@@ -397,76 +379,7 @@
     }
     const slot = $('#atlas-slot');
     if (!slot || token !== atlasToken) return;
-    slot.innerHTML = `${atlasHTML(syms, rec, T)}<div id="predict-slot"><p class="muted">Loading the prediction model…</p></div>`;
-    renderPrediction(syms, rec, T, token);
-  }
-
-  /* ---------- model prediction for any combination ---------- */
-
-  function knownBest(syms, rec) {
-    // the best-documented compound of exactly these elements, for comparison with the prediction
-    const measured = Engine.compoundsFor(syms).map((c) => c.formula);
-    if (measured.length) return { formula: measured[0], source: 'measured on this site' };
-    if (rec && rec.alexandria && rec.alexandria.stable) return { formula: rec.alexandria.rows[0].formula, source: 'stable in Alexandria (DFT)' };
-    const j = Theory.infoFor(syms);
-    if (j && j.status === 'stable') return { formula: j.best.formula, source: 'stable in JARVIS (DFT)' };
-    return null;
-  }
-
-  const sameRatio = (a, b) => {
-    const ca = Engine.parseFormula(a); const cb = Engine.parseFormula(b);
-    const ka = Object.keys(ca).sort(); const kb = Object.keys(cb).sort();
-    if (ka.join() !== kb.join()) return false;
-    const ta = ka.reduce((s, k) => s + ca[k], 0); const tb = kb.reduce((s, k) => s + cb[k], 0);
-    return ka.every((k) => Math.abs(ca[k] / ta - cb[k] / tb) < 1e-6);
-  };
-
-  function predictionHTML(syms, rec, T) {
-    const names = syms.map((s) => BY_SYMBOL[s].name).join(' + ');
-    const p = Predict.predictSet(syms);
-    const m = Predict.model.metrics;
-    const v = m.systems[Math.min(syms.length, 3)];
-    const accuracy = `On ${v.n.toLocaleString()} ${syms.length === 2 ? 'pairs' : 'triples'} it never saw, it was right about whether a compound forms ${Math.round(v.formsAgreement * 100)}% of the time (always guessing the commoner answer: ${Math.round(v.baselineAgreement * 100)}%), and named a correct formula as its first choice ${Math.round(v.formulaTop1 * 100)}% of the time.${syms.length > 3 ? ' It was checked on up to three elements; with more it is a rough guess.' : syms.length === 3 ? ' For three or more elements treat it as a rough guess.' : ''}`;
-    const head = `<div class="section-head"><h3>Model prediction: ${esc(names)} <span class="badge q-estimated">Estimate</span></h3>
-      <p>What a model trained on ${m.trainFormulas.toLocaleString()} computed formulas expects to form from exactly these elements. It works for any combination, including ones no database has explored.</p></div>`;
-    const notes = p.notes.map((nt) => `<p class="rx-note">${esc(nt)}</p>`).join('');
-    if (!p.candidates) return `${head}<div class="rx"><div class="rx-top"><div class="rx-name">No compound expected</div><span class="badge q-none">Rule</span></div>${notes}</div>`;
-    const known = knownBest(syms, rec);
-    if (!p.forms) {
-      const parts = p.decomposition.map((d) => fmtFormula(d.formula)).join(' + ');
-      const onlyElements = p.decomposition.every((d) => d.syms.length === 1);
-      return `${head}<div class="rx"><div class="rx-top"><div class="rx-name">No compound of all ${syms.length} elements predicted</div><span class="badge q-estimated">Model prediction</span></div>
-        <p class="verdict">None of the ${p.candidates} candidate formulas comes out lower in energy than a mixture of ${onlyElements ? 'the separate elements' : 'simpler substances'}. ${onlyElements ? `The elements are expected to stay separate${syms.every((s) => BY_SYMBOL[s].isMetal) ? ' or just mix as an alloy' : ''}.` : `Instead, expect: <strong>${parts}</strong>.`}${known ? ` (The databases do list ${fmtFormula(known.formula)}, ${known.source}; trust that over this estimate.)` : ''}</p>
-        <p class="rx-note">${esc(accuracy)}</p>${notes}</div>`;
-    }
-    const best = p.products[0];
-    const atoms = best.counts.reduce((a, b) => a + b, 0);
-    let compare = '';
-    if (known) {
-      compare = p.products.some((x) => sameRatio(known.formula, x.formula))
-        ? ` This agrees with the databases: ${known.formula} is ${known.source}.`
-        : ` The databases list ${known.formula} (${known.source}) instead; trust that over this estimate.`;
-    }
-    const others = p.products.slice(1).map((x) => x.formula).join(', ');
-    const r = Engine.formationReaction({ formula: best.formula, phase: 's', dHf: best.feKj * atoms, S: null, hEstimated: true, name: best.formula },
-      { quality: 'model' });
-    r.name = `Predicted product: ${best.formula}${best.marginal ? ' (only marginally favourable)' : ''}`;
-    r.note = `Out of ${p.candidates} candidate formulas${syms.some((s) => !BY_SYMBOL[s].isMetal) ? ' that balance the charges of common ions' : ''}, this is the most stable one: its predicted formation energy is ${fmtNum(best.feKj, 0)} kJ/mol per atom, ${fmtNum(-best.marginKj, 0)} kJ/mol per atom below any mixture of the elements and simpler compounds.`
-      + (others ? ` Other compounds predicted to be stable: ${others}.` : '')
-      + compare + ` ${accuracy} ΔS is an additive estimate assuming a solid product.`;
-    return `${head}${reactionHTML(r, T)}${notes ? `<div class="rx">${notes}</div>` : ''}`;
-  }
-
-  async function renderPrediction(syms, rec, T, token) {
-    try {
-      await Predict.ready();
-    } catch (err) {
-      const slot = $('#predict-slot');
-      if (slot && token === atlasToken) slot.innerHTML = `<p class="muted">${esc(err.message)}</p>`;
-      return;
-    }
-    const slot = $('#predict-slot');
-    if (slot && token === atlasToken) slot.innerHTML = predictionHTML(syms, rec, T);
+    slot.innerHTML = atlasHTML(syms, rec, T);
   }
 
   /* ---------- state ---------- */
@@ -535,13 +448,6 @@
     if (p && (p.pubchem || p.cod)) return 'known';
     if (c === 'dft' || (p && p.stable)) return 'dft';
     if (c === 'dft-none' || (p && p.computed)) return 'dft-none';
-    if (c === 'noble') return c;
-    // no data anywhere: the composition model's prediction (scripts/atlas/build_pair_predictions.js)
-    const m = PAIR_PRED[Atlas.keyOf([a, b])];
-    if (m && m.conf !== 'r') {
-      ML_PAIR[Atlas.keyOf([a, b])] = m.forms ? `${m.formula}?` : '';
-      return m.conf === 'e' ? 'ml-x' : m.forms ? 'ml' : 'ml-none';
-    }
     return c;
   }
 
@@ -579,25 +485,14 @@
   const MAP_CLASSES = [
     ['data', 'Measured ΔH° and S° on this site'],
     ['known', 'Recorded in PubChem or COD'],
-    ['dft', 'DFT: compound predicted to form'],
+    ['dft', 'DFT: compound calculated to form'],
     ['dft-none', 'DFT: computed, no stable compound'],
-    ['predicted', 'Predicted compound (estimate)'],
-    ['alloy', 'Metal + metal → alloy'],
-    ['noble', 'Noble gas → no reaction'],
+
+    ['noble', 'He, Ne or Ar: no compounds known'],
     ['superheavy', 'Superheavy: no bulk chemistry'],
-    ['unknown', 'No reliable prediction'],
-    ['ml', 'Model: compound predicted (no data)'],
-    ['ml-none', 'Model: no compound predicted (no data)'],
-    ['ml-x', 'Model extrapolation (very uncertain)'],
+    ['unknown', 'Unknown: never made or calculated'],
     ['same', 'Element with itself'],
   ];
-
-  const ML_PAIR = {};
-  const PAIR_PRED = {};
-  (window.PAIR_PREDICTIONS || '').split('\n').forEach((line) => {
-    const [k, forms, formula, kj, conf] = line.split('|');
-    PAIR_PRED[k] = { forms: forms === '1', formula, kj: Number(kj), conf };
-  });
 
   function renderMap(counts) {
     const css = getComputedStyle(document.documentElement);
@@ -642,8 +537,7 @@
       const b = ELEMENTS[j];
       const cls = pc[i][j];
       const comps = cls === 'data' ? Engine.compoundsFor([a.symbol, b.symbol]).map((x) => x.formula).join(', ') : '';
-      const pred = cls === 'predicted' ? Engine.predictBinary(a, b).formula + '?' : ML_PAIR[Atlas.keyOf([a.symbol, b.symbol])] || '';
-      tip.innerHTML = `<b>${a.symbol} + ${b.symbol}</b> · ${a.name} + ${b.name}<br>${label[cls]}${comps ? ': ' + fmtFormula(comps) : ''}${pred ? ': ' + fmtFormula(pred) : ''}`;
+      tip.innerHTML = `<b>${a.symbol} + ${b.symbol}</b> · ${a.name} + ${b.name}<br>${label[cls]}${comps ? ': ' + fmtFormula(comps) : ''}`;
       const wr = cv.parentElement.getBoundingClientRect();
       tip.style.left = Math.min(ev.clientX - wr.left + 14, wr.width - 270) + 'px';
       tip.style.top = ev.clientY - wr.top + 14 + 'px';
@@ -677,7 +571,7 @@
         phase: c.phase,
         dHf,
         dSf,
-        dSEst: r.sEstimated,
+        dSEst: false,
         dGf: Engine.gibbs(dHf, dSf, Engine.T0),
         elements: Object.keys(Engine.countsOf(c.formula)),
       };
@@ -796,9 +690,9 @@
     return `
       <div class="insights">
         <div class="ins-card">
-          <h3>What the calculations predict</h3>
+          <h3>What the calculations show</h3>
           <table class="mini"><thead><tr><th>Elements</th><th class="num">Combinations computed</th><th class="num">Form a stable compound</th><th class="num">Share</th></tr></thead><tbody>${sizeRows}</tbody></table>
-          <p><strong>${stable.length.toLocaleString()}</strong> compounds are predicted thermodynamically stable. <strong>${hypo.length.toLocaleString()}</strong> of them have no experimentally determined structure linked in the dataset. Most of these are genuinely new theoretical predictions; some are known compounds whose record is missing.</p>
+          <p><strong>${stable.length.toLocaleString()}</strong> compounds are calculated to be thermodynamically stable. <strong>${hypo.length.toLocaleString()}</strong> of them have no experimentally determined structure linked in the dataset. Most of these have only been calculated, never made; some are known compounds whose record is missing.</p>
         </div>
         <div class="ins-card">
           <h3>How far to trust it</h3>
@@ -825,7 +719,7 @@
         </div>
         <div class="ins-card">
           <h3>Strongest stable binaries with no experimental record</h3>
-          <p class="muted">Predicted stable, with no experimental structure linked. Some are known compounds missing that link; the rest are candidates for synthesis, or DFT artefacts.</p>
+          <p class="muted">Calculated stable, with no experimental structure linked. Some are known compounds missing that link; the rest have only been calculated, never made.</p>
           <ul class="tight">${newBig}</ul>
         </div>
       </div>`;
@@ -833,7 +727,6 @@
 
   function atlasOverviewHTML() {
     const S = Atlas.SUMMARY;
-    const M = Atlas.MODEL;
     const sizeName = { 2: 'Pairs', 3: 'Triples', 4: '4 elements', 5: '5 elements', 6: '6 elements', 7: '7 elements', 8: '8 or more' };
     const pct = (a, b) => {
       if (!b) return '—';
@@ -849,9 +742,10 @@
     const link = (key) => `<a href="#" data-open="${key.split('-').join('+')}">${key.split('-').join(' + ')}</a>`;
     const newStable = S.newStable.filter((r) => r[0].split('-').length <= 3).slice(0, 12)
       .map(([key, formula, fe]) => `<li>${link(key)}: ${fmtFormula(formula)}, ${fmtNum(fe * Atlas.EV_TO_KJ, 0)} kJ/mol per atom</li>`).join('');
-    const promising = M.promising[3].top.slice(0, 12)
-      .map(([key, p, fe]) => `<li>${link(key)}: ${Math.round(p * 100)}% chance, ΔH<sub>f</sub> ≈ ${fmtNum(fe * Atlas.EV_TO_KJ, 0)} kJ/mol per atom</li>`).join('');
-    const bs = M.metrics.bySize;
+    const unknownRows = [2, 3, 4].map((k) => {
+      const b = S.bySize[k];
+      return `<li>${sizeName[k]}: <strong>${(b.possible - b.seen).toLocaleString()}</strong> of ${b.possible.toLocaleString()} (${pct(b.possible - b.seen, b.possible)})</li>`;
+    }).join('');
     return `
       <div class="table-scroll" style="max-height:none">
         <table class="ctable">
@@ -862,15 +756,10 @@
       <p class="muted">"Known experimentally" means at least one PubChem record or COD crystal structure contains exactly these elements. PubChem also holds some unusual or theoretical entries, so a record is not proof that a stable bulk compound exists.</p>
       <div class="insights">
         <div class="ins-card">
-          <h3>Theorising the unexplored</h3>
-          <p>All pairs among the model's ${M.trained.length} elements have been computed somewhere. Of the triples, <strong>${M.promising[3].unexplored.toLocaleString()}</strong> have never been explored, and the model expects <strong>${M.promising[3].likelyStable}</strong> of them to form a stable compound. Any combination of up to 7 elements can be scored in the reaction lab.</p>
-          <p>Accuracy on ${M.metrics.heldOut.toLocaleString()} held-out combinations: AUC ${M.metrics.auc} overall (pairs ${bs[2].auc}, triples ${bs[3].auc}, quadruples ${bs[4].auc}). Lowest formation energy is predicted to within ${fmtNum(M.metrics.feMae * Atlas.EV_TO_KJ, 0)} kJ/mol per atom on average.</p>
-          <p class="muted">Not covered: ${M.excluded.join(', ')} (too few training examples), and elements beyond plutonium.</p>
-        </div>
-        <div class="ins-card">
-          <h3>Most promising unexplored triples</h3>
-          <p class="muted">No database has computed these. Model estimates.</p>
-          <ul class="tight">${promising}</ul>
+          <h3>Unknown: never made or calculated</h3>
+          <p>Combinations that appear in none of these databases. Nothing is known about what they form, so this site shows them as unknown.</p>
+          <ul class="tight">${unknownRows}</ul>
+          <p class="muted">Most involve radioactive or superheavy elements, or many elements at once. A specific one can be found out by a quantum-mechanical calculation or an experiment.</p>
         </div>
         <div class="ins-card">
           <h3>Stable by DFT, but never recorded</h3>
