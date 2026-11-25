@@ -14,6 +14,7 @@ import bz2
 import json
 import multiprocessing
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -28,18 +29,35 @@ STABLE = 1e-3  # eV/atom
 
 
 class NanFilter:
-    """File-like wrapper turning the non-standard JSON tokens NaN / Infinity into null."""
+    """File-like wrapper turning the non-standard JSON values NaN / Infinity / -Infinity into null.
+
+    Only bare values are replaced (after "[", ":" or ","), never text inside strings: formulas such
+    as "NaNbO3" (sodium niobate) or "NaNO3" contain the letters NaN.
+    """
+    TOKEN = re.compile(rb'(?<=[\[:,])(\s*)-?(?:NaN|Infinity)(?=\s*[,\]}])')
+
     def __init__(self, raw):
-        self.raw, self.tail = raw, b''
+        self.raw, self.held, self.prev = raw, b'', b' '
 
     def read(self, size=1 << 20):
-        chunk = self.raw.read(size)
-        data = self.tail + chunk
-        if chunk:
-            self.tail, data = data[-9:], data[:-9]  # keep a tail so a token split across chunks still matches
-        else:
-            self.tail = b''
-        return data.replace(b'-Infinity', b'null').replace(b'Infinity', b'null').replace(b'NaN', b'null')
+        while True:
+            chunk = self.raw.read(size)
+            data = self.held + chunk
+            if not chunk:  # end of the stream
+                self.held = b''
+                return self._emit(data)
+            cut = data.rfind(b',')  # emit only up to a comma, so no token is split across reads
+            if cut < 0:
+                self.held = data  # keep reading: an empty return would look like end of file
+                continue
+            self.held, data = data[cut + 1:], data[:cut + 1]
+            return self._emit(data)
+
+    def _emit(self, data):
+        out = self.TOKEN.sub(rb'\1null', self.prev + data)[len(self.prev):]
+        if data:
+            self.prev = data[-1:]
+        return out
 
 
 def summarise(i):

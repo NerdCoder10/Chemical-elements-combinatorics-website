@@ -161,6 +161,29 @@ test('every tabulated compound and every example product has real-world uses', (
   M.PRESETS.forEach((p) => M.parseEquation(p.eq).right.forEach((t) => assert.ok(usesOf(t.formula), `no uses for ${t.formula}`)));
 });
 
+test('predict: browser candidates and energies match the Python training script', () => {
+  const Pr = require('../js/predict.js');
+  Pr.model.checks.forEach(([syms, nCands, formula, fe, cb]) => {
+    assert.strictEqual(Pr.candidates(syms).length, nCands, `candidate count for ${syms}`);
+    const counts = Engine_counts(formula, syms);
+    near(Pr.score(Pr.model.model, Pr.featuresOf(syms, counts)), fe, 1e-5);
+    assert.strictEqual(Pr.featuresOf(syms, counts).slice(-1)[0], cb);
+  });
+  assert.strictEqual(Pr.predictSet(['He', 'F']).products.length, 0); // helium is unreactive
+  assert.ok(Pr.chargeBalanced(['Cl', 'Na'], [1, 1]) && !Pr.chargeBalanced(['Cl', 'Na'], [2, 1]));
+  assert.ok(Pr.chargeBalanced(['C', 'Ca', 'O'], [1, 1, 3]) && !Pr.chargeBalanced(['C', 'Ca', 'O'], [2, 5, 1])); // carbonate, not carbide-oxide
+  assert.deepStrictEqual([[['Cl', 'Na'], [1, 1]], [['C', 'Ca', 'O'], [1, 1, 3]], [['C', 'H'], [1, 4]], [['H', 'N'], [3, 1]], [['H', 'O'], [2, 1]]]
+    .map(([s, c]) => Pr.displayFormula(s, c)), ['NaCl', 'CaCO3', 'CH4', 'NH3', 'H2O']);
+  // the hull: a mixture never beats the pure elements' zero, and a pair's stable compound is found
+  const pts = [{ x: [1, 0], fe: 0 }, { x: [0, 1], fe: 0 }, { x: [0.5, 0.5], fe: -1 }];
+  near(Pr.cheapestMixture(pts, [0.5, 0.5], 2).energy, 0, 1e-12);
+  near(Pr.cheapestMixture(pts, [0.5, 0.5], -1).energy, -1, 1e-12);
+});
+function Engine_counts(formula, syms) {
+  const c = E.parseFormula(formula);
+  return syms.map((s) => c[s]);
+}
+
 test('D-T fusion releases 17.59 MeV', () => {
   const [r] = E.nuclearReactions(['2H', '3H']);
   assert.strictEqual(r.Q, 17.59);

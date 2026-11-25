@@ -205,6 +205,7 @@
     nuclear: ['q-nuclear', 'Nuclear'],
     dft: ['q-dft', 'Computed (DFT)'],
     alex: ['q-dft', 'Computed (Alexandria DFT)'],
+    model: ['q-estimated', 'Model prediction'],
   };
 
   const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
@@ -395,7 +396,77 @@
       return;
     }
     const slot = $('#atlas-slot');
-    if (slot && token === atlasToken) slot.innerHTML = atlasHTML(syms, rec, T);
+    if (!slot || token !== atlasToken) return;
+    slot.innerHTML = `${atlasHTML(syms, rec, T)}<div id="predict-slot"><p class="muted">Loading the prediction model…</p></div>`;
+    renderPrediction(syms, rec, T, token);
+  }
+
+  /* ---------- model prediction for any combination ---------- */
+
+  function knownBest(syms, rec) {
+    // the best-documented compound of exactly these elements, for comparison with the prediction
+    const measured = Engine.compoundsFor(syms).map((c) => c.formula);
+    if (measured.length) return { formula: measured[0], source: 'measured on this site' };
+    if (rec && rec.alexandria && rec.alexandria.stable) return { formula: rec.alexandria.rows[0].formula, source: 'stable in Alexandria (DFT)' };
+    const j = Theory.infoFor(syms);
+    if (j && j.status === 'stable') return { formula: j.best.formula, source: 'stable in JARVIS (DFT)' };
+    return null;
+  }
+
+  const sameRatio = (a, b) => {
+    const ca = Engine.parseFormula(a); const cb = Engine.parseFormula(b);
+    const ka = Object.keys(ca).sort(); const kb = Object.keys(cb).sort();
+    if (ka.join() !== kb.join()) return false;
+    const ta = ka.reduce((s, k) => s + ca[k], 0); const tb = kb.reduce((s, k) => s + cb[k], 0);
+    return ka.every((k) => Math.abs(ca[k] / ta - cb[k] / tb) < 1e-6);
+  };
+
+  function predictionHTML(syms, rec, T) {
+    const names = syms.map((s) => BY_SYMBOL[s].name).join(' + ');
+    const p = Predict.predictSet(syms);
+    const m = Predict.model.metrics;
+    const v = m.systems[Math.min(syms.length, 3)];
+    const accuracy = `On ${v.n.toLocaleString()} ${syms.length === 2 ? 'pairs' : 'triples'} it never saw, it was right about whether a compound forms ${Math.round(v.formsAgreement * 100)}% of the time (always guessing the commoner answer: ${Math.round(v.baselineAgreement * 100)}%), and named a correct formula as its first choice ${Math.round(v.formulaTop1 * 100)}% of the time.${syms.length > 3 ? ' It was checked on up to three elements; with more it is a rough guess.' : syms.length === 3 ? ' For three or more elements treat it as a rough guess.' : ''}`;
+    const head = `<div class="section-head"><h3>Model prediction: ${esc(names)} <span class="badge q-estimated">Estimate</span></h3>
+      <p>What a model trained on ${m.trainFormulas.toLocaleString()} computed formulas expects to form from exactly these elements. It works for any combination, including ones no database has explored.</p></div>`;
+    const notes = p.notes.map((nt) => `<p class="rx-note">${esc(nt)}</p>`).join('');
+    if (!p.candidates) return `${head}<div class="rx"><div class="rx-top"><div class="rx-name">No compound expected</div><span class="badge q-none">Rule</span></div>${notes}</div>`;
+    const known = knownBest(syms, rec);
+    if (!p.forms) {
+      const parts = p.decomposition.map((d) => fmtFormula(d.formula)).join(' + ');
+      const onlyElements = p.decomposition.every((d) => d.syms.length === 1);
+      return `${head}<div class="rx"><div class="rx-top"><div class="rx-name">No compound of all ${syms.length} elements predicted</div><span class="badge q-estimated">Model prediction</span></div>
+        <p class="verdict">None of the ${p.candidates} candidate formulas comes out lower in energy than a mixture of ${onlyElements ? 'the separate elements' : 'simpler substances'}. ${onlyElements ? `The elements are expected to stay separate${syms.every((s) => BY_SYMBOL[s].isMetal) ? ' or just mix as an alloy' : ''}.` : `Instead, expect: <strong>${parts}</strong>.`}${known ? ` (The databases do list ${fmtFormula(known.formula)}, ${known.source}; trust that over this estimate.)` : ''}</p>
+        <p class="rx-note">${esc(accuracy)}</p>${notes}</div>`;
+    }
+    const best = p.products[0];
+    const atoms = best.counts.reduce((a, b) => a + b, 0);
+    let compare = '';
+    if (known) {
+      compare = p.products.some((x) => sameRatio(known.formula, x.formula))
+        ? ` This agrees with the databases: ${known.formula} is ${known.source}.`
+        : ` The databases list ${known.formula} (${known.source}) instead; trust that over this estimate.`;
+    }
+    const others = p.products.slice(1).map((x) => x.formula).join(', ');
+    const r = Engine.formationReaction({ formula: best.formula, phase: 's', dHf: best.feKj * atoms, S: null, hEstimated: true, name: best.formula },
+      { quality: 'model' });
+    r.name = `Predicted product: ${best.formula}${best.marginal ? ' (only marginally favourable)' : ''}`;
+    r.note = `Out of ${p.candidates} candidate formulas${syms.some((s) => !BY_SYMBOL[s].isMetal) ? ' that balance the charges of common ions' : ''}, this is the most stable one: its predicted formation energy is ${fmtNum(best.feKj, 0)} kJ/mol per atom, ${fmtNum(-best.marginKj, 0)} kJ/mol per atom below any mixture of the elements and simpler compounds.`
+      + (others ? ` Other compounds predicted to be stable: ${others}.` : '')
+      + compare + ` ${accuracy} ΔS is an additive estimate assuming a solid product.`;
+    return `${head}${reactionHTML(r, T)}${notes ? `<div class="rx">${notes}</div>` : ''}`;
+  }
+
+  async function renderPrediction(syms, rec, T, token) {
+    try {
+      await Predict.ready();
+    } catch (err) {
+      const slot = $('#predict-slot');
+      if (slot && token === atlasToken) slot.innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+      return;
+    }
+    const slot = $('#predict-slot');
+    if (slot && token === atlasToken) slot.innerHTML = predictionHTML(syms, rec, T);
   }
 
   /* ---------- state ---------- */
@@ -464,6 +535,13 @@
     if (p && (p.pubchem || p.cod)) return 'known';
     if (c === 'dft' || (p && p.stable)) return 'dft';
     if (c === 'dft-none' || (p && p.computed)) return 'dft-none';
+    if (c === 'noble') return c;
+    // no data anywhere: the composition model's prediction (scripts/atlas/build_pair_predictions.js)
+    const m = PAIR_PRED[Atlas.keyOf([a, b])];
+    if (m && m.conf !== 'r') {
+      ML_PAIR[Atlas.keyOf([a, b])] = m.forms ? `${m.formula}?` : '';
+      return m.conf === 'e' ? 'ml-x' : m.forms ? 'ml' : 'ml-none';
+    }
     return c;
   }
 
@@ -508,8 +586,18 @@
     ['noble', 'Noble gas → no reaction'],
     ['superheavy', 'Superheavy: no bulk chemistry'],
     ['unknown', 'No reliable prediction'],
+    ['ml', 'Model: compound predicted (no data)'],
+    ['ml-none', 'Model: no compound predicted (no data)'],
+    ['ml-x', 'Model extrapolation (very uncertain)'],
     ['same', 'Element with itself'],
   ];
+
+  const ML_PAIR = {};
+  const PAIR_PRED = {};
+  (window.PAIR_PREDICTIONS || '').split('\n').forEach((line) => {
+    const [k, forms, formula, kj, conf] = line.split('|');
+    PAIR_PRED[k] = { forms: forms === '1', formula, kj: Number(kj), conf };
+  });
 
   function renderMap(counts) {
     const css = getComputedStyle(document.documentElement);
@@ -554,7 +642,7 @@
       const b = ELEMENTS[j];
       const cls = pc[i][j];
       const comps = cls === 'data' ? Engine.compoundsFor([a.symbol, b.symbol]).map((x) => x.formula).join(', ') : '';
-      const pred = cls === 'predicted' ? Engine.predictBinary(a, b).formula + '?' : '';
+      const pred = cls === 'predicted' ? Engine.predictBinary(a, b).formula + '?' : ML_PAIR[Atlas.keyOf([a.symbol, b.symbol])] || '';
       tip.innerHTML = `<b>${a.symbol} + ${b.symbol}</b> · ${a.name} + ${b.name}<br>${label[cls]}${comps ? ': ' + fmtFormula(comps) : ''}${pred ? ': ' + fmtFormula(pred) : ''}`;
       const wr = cv.parentElement.getBoundingClientRect();
       tip.style.left = Math.min(ev.clientX - wr.left + 14, wr.width - 270) + 'px';
@@ -891,6 +979,7 @@
       p.classList.toggle('active', on);
     });
     if (window.MolLab) MolLab.setVisible(name === 'molecules'); // the animation only runs while you can see it
+
   }
 
   /* ---------- init ---------- */
@@ -951,6 +1040,13 @@
     $('#temp-val').textContent = `${state.T} K (${(state.T - 273.15).toFixed(0)} °C)`;
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => renderMap(counts));
 
+    // follow address changes (a pasted or edited link with another combination)
+    window.addEventListener('hashchange', () => {
+      readHash();
+      showTab('lab');
+      update();
+      if (state.tray.length) renderInfo(state.tray[0].symbol);
+    });
     readHash();
     if (!state.tray.length) state.tray = [{ symbol: 'H', isotope: null }, { symbol: 'O', isotope: null }];
     update();

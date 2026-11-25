@@ -22,7 +22,7 @@
 
   --m-data: #2f9e63; --m-predicted: #e0a43a; --m-alloy: #7f9cc8; --m-noble: #bfc4ce;
   --m-same: #39414f; --m-superheavy: #e9eaee; --m-unknown: #d47b7b;
-  --m-dft: #7a55c7; --m-dft-none: #e7a3a3; --m-known: #1f8f8a;
+  --m-dft: #7a55c7; --m-dft-none: #e7a3a3; --m-known: #1f8f8a; --m-ml: #c98bd9; --m-ml-none: #f2c9c9; --m-ml-x: #d8d2e8;
 
   --radius: 10px;
   --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 4px 14px rgba(20, 30, 50, .05);

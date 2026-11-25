@@ -229,6 +229,8 @@
           <dd>For every combination of 2 or more elements, the lab also reports what the largest open databases hold for exactly those elements: PubChem (124.7 million compounds), the Crystallography Open Database (431,778 measured crystal structures) and Alexandria (5.8 million DFT calculations, with stability judged against its own convex hull). Together they contain 817,518 distinct combinations. Their stable compounds are shown with balanced formation reactions.</dd>
           <dt><span class="badge q-estimated">Machine-learning estimate</span></dt>
           <dd>Where no database has explored a combination, a gradient-boosted model trained on the 680,189 combinations Alexandria did compute estimates the chance that a stable compound exists and its lowest formation energy. It uses only element properties, so it cannot name a formula, and it excludes the noble gases He–Xe and elements beyond plutonium, which lack training data. Its held-out accuracy is shown in the Theory explorer.</dd>
+          <dt><span class="badge q-estimated">Model prediction</span> (any combination)</dt>
+          <dd>For every set of 2–7 elements the lab also shows what a model expects to form. It lists candidate formulas (ones that balance the charges of common ions, or simple ratios for all-metal sets), estimates each one's formation energy with gradient-boosted trees trained on every composition in the Alexandria DFT database, and reports the lowest. Its accuracy on element combinations it never saw is shown with each result. Elements with little training data (the noble gases, and everything beyond plutonium) are marked as very uncertain extrapolations; helium, neon and argon are treated as unreactive.</dd>
           <dt><span class="badge q-none">No reaction</span></dt>
           <dd>Noble gases (apart from a few xenon and krypton compounds), or an element combined with itself when it has no other allotrope. Nothing changes, so ΔH° = ΔS° = 0.</dd>
           <dt><span class="badge q-nuclear">Nuclear</span></dt>
@@ -269,6 +271,8 @@
   <script src="js/model.js"></script>
   <script src="js/atlas-summary.js"></script>
   <script src="js/atlas.js"></script>
+  <script src="js/predict.js"></script>
+  <script src="js/pair-predictions.js"></script>
   <script src="js/uses.js"></script>
   <script src="js/molecular.js"></script>
   <script src="js/app.js"></script>
