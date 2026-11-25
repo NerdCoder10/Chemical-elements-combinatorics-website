@@ -232,6 +232,9 @@
           <dt><span class="badge q-nuclear">Nuclear</span></dt>
           <dd>Only when you pick specific isotopes. Fusion and transmutation reactions are shown with their Q-value. ΔH is −Q per mole of events. These energies are about a million times larger than chemical ones.</dd>
         </dl>
+        <h3>Calculated on request</h3>
+        <p>Combinations that no database covers can be calculated for this site with density-functional theory (PySCF, PBE functional, GTH pseudopotentials, scripts in <code>scripts/dft/</code>). Each result appears in the reaction lab next to the database results, with its method and raw energies stored in <code>data/calculated/</code>.</p>
+        <p>The setup was checked on table salt: it gives ΔH<sub>f</sub>°(NaCl) = −365.6 kJ/mol against the measured −411.2 kJ/mol (11% too weak, the known error of this functional for chlorides), and lattice constants and bond lengths within 2% of experiment. Calculations are slow here (about 20 minutes for that test), so they are run one combination at a time.</p>
         <h3>Things to keep in mind</h3>
         <ul>
           <li><strong>Thermodynamics is not kinetics.</strong> A negative ΔG° says a reaction is favourable, not that it is fast. Diamond is less stable than graphite and still lasts forever.</li>
@@ -265,6 +268,7 @@
   <script src="js/engine.js"></script>
   <script src="js/atlas-summary.js"></script>
   <script src="js/atlas.js"></script>
+  <script src="js/calculated.js"></script>
   <script src="js/uses.js"></script>
   <script src="js/molecular.js"></script>
   <script src="js/app.js"></script>

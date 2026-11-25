@@ -1,0 +1,17 @@
+{
+ "elements": [
+  "Cl",
+  "Na"
+ ],
+ "formula": "NaCl",
+ "structure": "rocksalt",
+ "dHf_kJ_per_mol": -365.6,
+ "measured_kJ_per_mol": -411.2,
+ "method": "PySCF PBC PBE/gth-dzvp-molopt-sr/gth-pbe",
+ "parts": [
+  "NaCl_rocksalt",
+  "Na_bcc",
+  "Cl2_molecule"
+ ],
+ "purpose": "validation"
+}

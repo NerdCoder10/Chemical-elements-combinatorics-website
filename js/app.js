@@ -204,6 +204,7 @@
     nuclear: ['q-nuclear', 'Nuclear'],
     dft: ['q-dft', 'Computed (DFT)'],
     alex: ['q-dft', 'Computed (Alexandria DFT)'],
+    calc: ['q-dft', 'Calculated for this site (DFT)'],
   };
 
   const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
@@ -243,8 +244,8 @@
   function reactionHTML(r, T) {
     const [qc, ql] = QUALITY[r.quality] || QUALITY.tabulated;
     const G = r.kind === 'nuclear' ? r.dH : Engine.gibbs(r.dH, r.dS, T);
-    const hEst = r.dft ? '<div class="est">DFT, ≈ 0 K</div>' : '';
-    const sEst = r.dS == null && r.kind !== 'nuclear' && r.quality !== 'none' ? `<div class="est">${r.dft ? 'not calculated' : 'not measured'}</div>` : '';
+    const hEst = r.dft || r.quality === 'calc' ? '<div class="est">DFT, ≈ 0 K</div>' : '';
+    const sEst = r.dS == null && r.kind !== 'nuclear' && r.quality !== 'none' ? `<div class="est">${r.dft || r.quality === 'calc' ? 'not calculated' : 'not measured'}</div>` : '';
     const dSText = r.kind === 'nuclear' ? 'n/a' : fmtNum(r.dS, 1);
     const dHText = r.dH == null ? 'not tabulated' : fmtNum(r.dH, 1);
     let perMol = '';
@@ -358,7 +359,17 @@
     if (rec && rec.alexandria && rec.alexandria.rows.length) {
       html += rec.alexandria.rows.map((row) => reactionHTML(alexReaction(row, known), T)).join('');
     }
-    if (!known && !computed && !Engine.compoundsFor(syms).length) {
+    // calculations run for this site (scripts/dft/)
+    const key = syms.slice().sort().join('-');
+    (window.CALCULATED || []).filter((c) => c.elements.slice().sort().join('-') === key).forEach((c) => {
+      const r = Engine.formationReaction({ formula: c.formula, phase: 's', dHf: c.dHf_kJ_per_mol, S: null, name: c.formula }, { quality: 'calc' });
+      r.name = `${c.formula} (${c.structure}), calculated for this site`;
+      r.note = `Calculated here with real density-functional theory (${c.method}): every energy (the compound and each element in its standard state) was computed from first principles, and the structure was relaxed. ΔS and ΔG are left blank because this calculation gives energy only.`
+        + (c.measured_kJ_per_mol != null ? ` Measured value: ${fmtNum(c.measured_kJ_per_mol, 1)} kJ/mol, so this calculation is off by ${fmtNum(Math.abs(c.dHf_kJ_per_mol - c.measured_kJ_per_mol), 0)} kJ/mol (${Math.round((100 * Math.abs(c.dHf_kJ_per_mol - c.measured_kJ_per_mol)) / Math.abs(c.measured_kJ_per_mol))}%), the known error of this method for this kind of compound.` : '');
+      html += reactionHTML(r, T);
+    });
+    const calculatedHere = (window.CALCULATED || []).some((c) => c.elements.slice().sort().join('-') === key);
+    if (!known && !computed && !calculatedHere && !Engine.compoundsFor(syms).length) {
       html += `<div class="rx"><div class="rx-top"><div class="rx-name">Unknown: never made or calculated</div><span class="badge q-none">No data</span></div>
         <p class="rx-note">No laboratory measurement and no quantum-mechanical calculation of compounds made of exactly ${esc(names)} exists in any of these databases, so what happens is not known. It can be found out by calculating it (see "Calculated on request" in Method &amp; sources) or by experiment.</p></div>`;
     }
