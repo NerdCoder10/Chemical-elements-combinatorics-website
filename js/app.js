@@ -221,6 +221,16 @@
     return '<span class="badge st-unstable">unstable</span>';
   }
 
+  /** "Watch it at the atomic level" for any reaction made of ordinary formulas. */
+  function watchButton(r) {
+    if (r.kind === 'nuclear' || !r.left || !r.right || r.quality === 'none') return '';
+    const terms = [...r.left, ...r.right];
+    if (terms.some((t) => !t.coef || /[–\s]/.test(t.formula) || /\([a-z]{3,}\)/.test(t.formula))) return '';
+    const side = (ts) => ts.map((t) => `${t.coef > 1 ? +t.coef.toFixed(3) + ' ' : ''}${t.formula}${['s', 'l', 'g'].includes(t.phase) ? `(${t.phase})` : ''}`).join(' + ');
+    const eq = `${side(r.left)} -> ${side(r.right)}`;
+    return `<button class="btn watch" data-watch="${esc(eq)}" data-name="${esc(r.name || '')}">Watch it at the atomic level</button>`;
+  }
+
   function reactionHTML(r, T) {
     const [qc, ql] = QUALITY[r.quality] || QUALITY.estimated;
     const G = r.kind === 'nuclear' ? r.dH : Engine.gibbs(r.dH, r.dS, T);
@@ -245,6 +255,7 @@
         ${perMol}
         ${r.note ? `<p class="rx-note">${esc(r.note)}</p>` : ''}
         ${r.dft && r.dft.jid ? `<p class="rx-note"><a href="${JARVIS_URL(r.dft.jid)}" target="_blank" rel="noopener">View the computed crystal structure (${r.dft.jid})</a></p>` : ''}
+        ${watchButton(r)}
       </article>`;
   }
 
@@ -868,6 +879,7 @@
       p.hidden = !on;
       p.classList.toggle('active', on);
     });
+    if (window.MolLab) MolLab.setVisible(name === 'molecules'); // the animation only runs while you can see it
   }
 
   /* ---------- init ---------- */
@@ -880,6 +892,14 @@
     renderMap(counts);
     initCompounds();
     initExplorer();
+    MolLab.init();
+    $('#results').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-watch]');
+      if (!b) return;
+      showTab('molecules');
+      MolLab.load(b.dataset.watch, { name: b.dataset.name || 'From the reaction lab' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
     document.querySelector('.tabs').addEventListener('click', (ev) => {
       const t = ev.target.closest('.tab');

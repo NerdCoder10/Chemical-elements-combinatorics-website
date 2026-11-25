@@ -1,6 +1,6 @@
 /* Service worker: caches the app so it opens instantly and works offline.
  * The 64 atlas chunks (js/atlas/bNN.js, ~49 MB) are not precached; each is cached the first time it is used. */
-const CACHE = 'element-combinator-v3';
+const CACHE = 'element-combinator-v4';
 const FILES = [
   './',
   'index.html',
@@ -15,6 +15,7 @@ const FILES = [
   'js/model.js',
   'js/atlas-summary.js',
   'js/atlas.js',
+  'js/molecular.js',
   'js/app.js',
   'icons/icon-192.png',
   'icons/icon-512.png',

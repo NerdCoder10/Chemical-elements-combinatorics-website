@@ -129,6 +129,31 @@ test('atlas: model in the browser matches scikit-learn; chunk hashing matches th
   assert.strictEqual(A.bucketOf('Cl-Na'), 0x4a849bc0 % 64); // FNV-1a, same as scripts/atlas/build_atlas.py
 });
 
+test('molecules: equations parse, auto-balance and give tabulated ΔH', () => {
+  const M = require('../js/molecular.js');
+  const eq = M.parseEquation('C3H8 + O2 -> CO2 + H2O');
+  assert.ok(!M.isBalanced(eq) && M.balance(eq));
+  assert.deepStrictEqual([...eq.left, ...eq.right].map((t) => t.coef), [1, 5, 3, 4]);
+  near(M.thermoFor(M.parseEquation('2 H2(g) + O2(g) -> 2 H2O(g)')).dH, -483.66);
+  near(M.thermoFor(M.parseEquation('C(s) + O2(g) -> CO2(g)')).dH, -393.51); // graphite, not free C atoms
+  assert.throws(() => M.parseEquation('Xx + O2 -> XxO'));
+  assert.throws(() => M.parseEquation('H2 + O2'));
+});
+
+test('molecules: structures have the right bonds, angles and ions', () => {
+  const M = require('../js/molecular.js');
+  assert.deepStrictEqual(M.bondsOf('CO2'), { 'C=O': 2 });
+  assert.deepStrictEqual(M.bondsOf('N2'), { 'N≡N': 1 });
+  assert.deepStrictEqual(M.bondsOf('CH4'), { 'C–H': 4 });
+  const w = M.buildTemplate('H2O').atoms;
+  const angle = Math.abs(Math.atan2(w[1].ly - w[0].ly, w[1].lx - w[0].lx) - Math.atan2(w[2].ly - w[0].ly, w[2].lx - w[0].lx)) * 180 / Math.PI;
+  near(angle, 104.5, 0.1);
+  assert.deepStrictEqual(M.buildTemplate('Fe2O3').atoms.map((a) => a.charge).sort(), [-2, -2, -2, 3, 3]);
+  const bc = M.bondChanges(M.parseEquation('2 H2 + O2 -> 2 H2O'));
+  assert.deepStrictEqual(bc.broken, { 'H–H': 2, 'O=O': 1 });
+  assert.deepStrictEqual(bc.formed, { 'O–H': 4 });
+});
+
 test('D-T fusion releases 17.59 MeV', () => {
   const [r] = E.nuclearReactions(['2H', '3H']);
   assert.strictEqual(r.Q, 17.59);
