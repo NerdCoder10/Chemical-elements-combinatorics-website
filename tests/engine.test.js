@@ -154,6 +154,13 @@ test('molecules: structures have the right bonds, angles and ions', () => {
   assert.deepStrictEqual(bc.formed, { 'O–H': 4 });
 });
 
+test('every tabulated compound and every example product has real-world uses', () => {
+  const { usesOf } = require('../js/uses.js');
+  const M = require('../js/molecular.js');
+  COMPOUNDS.forEach((c) => assert.ok(usesOf(c.formula), `no uses for ${c.formula}`));
+  M.PRESETS.forEach((p) => M.parseEquation(p.eq).right.forEach((t) => assert.ok(usesOf(t.formula), `no uses for ${t.formula}`)));
+});
+
 test('D-T fusion releases 17.59 MeV', () => {
   const [r] = E.nuclearReactions(['2H', '3H']);
   assert.strictEqual(r.Q, 17.59);

@@ -16,6 +16,7 @@
   const { BY_SYMBOL } = isNode ? require('./elements.js') : root;
   const { COMPOUNDS, SPECIES } = isNode ? require('./thermo.js') : root;
   const Engine = isNode ? require('./engine.js') : root.Engine;
+  const { usesOf } = isNode ? require('./uses.js') : root;
 
   const R = 8.314462618; // J/(mol·K)
   const NA = 6.02214076e23;
@@ -966,6 +967,20 @@
     els.legend.querySelectorAll('canvas.mol-mini').forEach((c) => miniMolecule(c, c.dataset.formula));
   }
 
+  function renderUses() {
+    const seen = new Set();
+    const products = sim.species.filter((s) => s.side === 'R' && !seen.has(s.formula) && seen.add(s.formula));
+    els.uses.innerHTML = products.map((s) => {
+      const u = usesOf(s.formula);
+      const head = `<div class="mol-use-head"><canvas class="mol-mini" width="64" height="48" data-formula="${s.formula}"></canvas><div><strong>${sub(s.formula)}</strong>${s.name !== s.formula ? `<div class="muted">${s.name}</div>` : ''}</div></div>`;
+      const body = u
+        ? `<p>${u.uses}</p>${u.safety ? `<p class="uses-safety"><strong>Safety &amp; environment:</strong> ${u.safety}</p>` : ''}`
+        : `<p class="muted">This site has no notes on what it is used for. <a href="https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(s.formula)}" target="_blank" rel="noopener">Look it up on PubChem</a>.</p>`;
+      return `<div class="mol-use">${head}${body}</div>`;
+    }).join('');
+    els.uses.querySelectorAll('canvas.mol-mini').forEach((c) => miniMolecule(c, c.dataset.formula));
+  }
+
   function renderReadout() {
     const c = counts();
     c.forEach((v, i) => { const el = document.getElementById(`mol-count-${i}`); if (el) el.textContent = v; });
@@ -1008,6 +1023,7 @@
     els.explain.innerHTML = describe();
     renderThermo();
     renderLegend();
+    renderUses();
     if (sim.visible) resize();
     populate();
     showMessage(note, false);
@@ -1092,7 +1108,7 @@
       spark: $('mol-spark'), reverse: $('mol-reverse'), temp: $('mol-temp'), tempVal: $('mol-temp-val'), ea: $('mol-ea'),
       eaVal: $('mol-ea-val'), amount: $('mol-amount'), amountVal: $('mol-amount-val'), heat: $('mol-heat'), heatVal: $('mol-heat-val'),
       speed: $('mol-speed'), speedVal: $('mol-speed-val'), thermostat: $('mol-thermostat'), labels: $('mol-labels'),
-      readT: $('mol-read-t'), readEvents: $('mol-read-events'), readProgress: $('mol-read-progress'),
+      uses: $('mol-uses'), readT: $('mol-read-t'), readEvents: $('mol-read-events'), readProgress: $('mol-read-progress'),
     };
     els.preset.innerHTML = PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('') + '<option value="custom">Your own reaction…</option>';
     els.preset.addEventListener('change', () => {

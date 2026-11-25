@@ -357,3 +357,14 @@ button, .el, .tab, select, input { touch-action: manipulation; -webkit-tap-highl
 .mol-footnote { font-size: .8rem; margin-top: 14px; max-width: 90ch; }
 .btn.watch { margin-top: 10px; font-size: .82rem; }
 @media (max-width: 520px) { .mol-readout .val { font-size: .9rem; } }
+
+/* real-world uses */
+.uses { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--good-soft); font-size: .86rem; }
+.uses p { margin: 4px 0 0; }
+.uses-title { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--good); }
+.uses-safety { display: block; margin-top: 4px; color: var(--muted); }
+p.uses-safety { margin: 6px 0 0; font-size: .82rem; }
+.mol-uses { display: flex; flex-direction: column; gap: 12px; font-size: .86rem; }
+.mol-use p { margin: 6px 0 0; }
+.mol-use a { color: var(--accent); }
+.mol-use-head { display: flex; gap: 10px; align-items: center; }

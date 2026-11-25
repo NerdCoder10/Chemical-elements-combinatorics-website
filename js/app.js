@@ -221,6 +221,16 @@
     return '<span class="badge st-unstable">unstable</span>';
   }
 
+  /** "Used for" box: real-world uses of the products of a reaction. */
+  function usesHTML(r) {
+    if (!r.right || r.quality === 'none') return '';
+    const seen = new Set();
+    const items = r.right.filter((t) => t.coef && !seen.has(t.formula) && seen.add(t.formula)).map((t) => [t.formula, usesOf(t.formula)]).filter(([, u]) => u);
+    if (!items.length) return '';
+    return `<div class="uses"><div class="uses-title">Used for</div>${items.map(([f, u]) => `
+      <p>${items.length > 1 ? `<strong>${fmtFormula(f)}</strong>: ` : ''}${esc(u.uses)}${u.safety ? `<span class="uses-safety"><strong>Safety &amp; environment:</strong> ${esc(u.safety)}</span>` : ''}</p>`).join('')}</div>`;
+  }
+
   /** "Watch it at the atomic level" for any reaction made of ordinary formulas. */
   function watchButton(r) {
     if (r.kind === 'nuclear' || !r.left || !r.right || r.quality === 'none') return '';
@@ -255,6 +265,7 @@
         ${perMol}
         ${r.note ? `<p class="rx-note">${esc(r.note)}</p>` : ''}
         ${r.dft && r.dft.jid ? `<p class="rx-note"><a href="${JARVIS_URL(r.dft.jid)}" target="_blank" rel="noopener">View the computed crystal structure (${r.dft.jid})</a></p>` : ''}
+        ${usesHTML(r)}
         ${watchButton(r)}
       </article>`;
   }
