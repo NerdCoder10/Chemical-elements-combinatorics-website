@@ -1,0 +1,20 @@
+{
+ "label": "Cl2_molecule",
+ "formula": "Cl2",
+ "natoms": 2,
+ "energy": -892.3332460280847,
+ "energy_per_atom": -446.16662301404233,
+ "kpts": [
+  1,
+  1,
+  1
+ ],
+ "cell": [
+  12.0,
+  12.0,
+  12.0
+ ],
+ "seconds": 38.2,
+ "method": "Quantum ESPRESSO 7.3.1, PBE, PseudoDojo NC v0.4, 90 Ry",
+ "converged": true
+}

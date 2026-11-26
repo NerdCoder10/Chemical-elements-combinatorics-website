@@ -1,0 +1,20 @@
+{
+ "label": "Na_bcc",
+ "formula": "Na",
+ "natoms": 1,
+ "energy": -1243.9404443294407,
+ "energy_per_atom": -1243.9404443294407,
+ "kpts": [
+  12,
+  12,
+  12
+ ],
+ "cell": [
+  3.6633,
+  3.6633,
+  3.6633
+ ],
+ "seconds": 42.0,
+ "method": "Quantum ESPRESSO 7.3.1, PBE, PseudoDojo NC v0.4, 90 Ry",
+ "converged": true
+}

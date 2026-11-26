@@ -1,0 +1,20 @@
+{
+ "label": "NaCl_rocksalt",
+ "formula": "ClNa",
+ "natoms": 2,
+ "energy": -1693.8142953280112,
+ "energy_per_atom": -846.9071476640056,
+ "kpts": [
+  10,
+  10,
+  10
+ ],
+ "cell": [
+  3.9881,
+  3.9881,
+  3.9881
+ ],
+ "seconds": 57.8,
+ "method": "Quantum ESPRESSO 7.3.1, PBE, PseudoDojo NC v0.4, 90 Ry",
+ "converged": true
+}
