@@ -8,7 +8,11 @@ COPY js/elements.js js/elements.js
 COPY server/ server/
 WORKDIR /app/server
 # download the MACE-MP-0 model at build time so the first request is fast
+ENV HOME=/app
 RUN python -c "from mace.calculators import mace_mp; mace_mp(model='small', device='cpu')"
 ENV OMP_NUM_THREADS=1 CALC_CACHE=/app/server/cache
+# Hugging Face runs the container as user 1000: the cache must be writable
+RUN mkdir -p /app/server/cache && chmod -R a+rwX /app/server/cache
+RUN chmod -R a+rwX /app/.cache
 EXPOSE 7860
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
