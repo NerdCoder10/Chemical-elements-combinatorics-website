@@ -232,6 +232,9 @@
           <dt><span class="badge q-nuclear">Nuclear</span></dt>
           <dd>Only when you pick specific isotopes. Fusion and transmutation reactions are shown with their Q-value. ΔH is −Q per mole of events. These energies are about a million times larger than chemical ones.</dd>
         </dl>
+        <h3>Calculate it now</h3>
+        <p>For any 2–4 elements, the reaction lab can send the combination to a calculation server (<code>server/</code>). The server lists candidate formulas, substitutes the elements into the most common real crystal structure types for that formula pattern (taken from Alexandria's 116,712 stable compounds), relaxes every structure with the MACE-MP-0 machine-learned potential, and builds the convex hull against the pure elements and simpler compounds. A pair typically takes 5–75 seconds on 4 cores; a triple a few minutes, because its three pairs are calculated too. Results are cached, so anything already calculated returns instantly.</p>
+        <p>This is an approximation of a full quantum-mechanical (DFT) calculation, not a measurement: the potential was trained on about 1.6 million DFT results and runs thousands of times faster than DFT. Its accuracy, checked against measured formation enthalpies and against DFT, is shown with each result. Structures that collapse or give impossible energies, a known failure of machine-learned potentials, are detected and discarded.</p>
         <h3>Calculated on request</h3>
         <p>Combinations that no database covers can be calculated for this site with density-functional theory (PySCF, PBE functional, GTH pseudopotentials, scripts in <code>scripts/dft/</code>). Each result appears in the reaction lab next to the database results, with its method and raw energies stored in <code>data/calculated/</code>.</p>
         <p>The setup was checked on table salt: it gives ΔH<sub>f</sub>°(NaCl) = −365.6 kJ/mol against the measured −411.2 kJ/mol (11% too weak, the known error of this functional for chlorides), and lattice constants and bond lengths within 2% of experiment. Calculations are slow here (about 20 minutes for that test), so they are run one combination at a time.</p>
@@ -250,6 +253,7 @@
           <li>PubChem: S. Kim <em>et al.</em>, “PubChem 2025 update”, Nucleic Acids Res. (2025); compound formulas from the NCBI FTP site (CID-Mass).</li>
           <li>Crystallography Open Database: S. Gražulis <em>et al.</em>, J. Appl. Cryst. 54, 661 (2021), via the JARVIS mirror.</li>
           <li>Alexandria: J. Schmidt <em>et al.</em>, Adv. Mater. 35, 2210788 (2023); PBE release 2025.07.02, https://alexandria.icams.rub.de.</li>
+          <li>Calculation server: I. Batatia <em>et al.</em>, “A foundation model for atomistic materials chemistry” (MACE-MP-0), arXiv:2401.00096; structure types from Alexandria; pymatgen and ASE.</li>
           <li>Theory: K. Choudhary <em>et al.</em>, “The joint automated repository for various integrated simulations (JARVIS) for data-driven materials design”, npj Comput. Mater. 6, 173 (2020). Convex hulls computed with pymatgen.</li>
           <li>Isotopes: F.G. Kondev <em>et al.</em>, “The NUBASE2020 evaluation of nuclear physics properties”, Chin. Phys. C 45, 030001 (2021)</li>
           <li>IUPAC standard atomic weights</li>
@@ -269,6 +273,8 @@
   <script src="js/atlas-summary.js"></script>
   <script src="js/atlas.js"></script>
   <script src="js/calculated.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/calc-validation.js"></script>
   <script src="js/uses.js"></script>
   <script src="js/molecular.js"></script>
   <script src="js/app.js"></script>

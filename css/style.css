@@ -368,3 +368,10 @@ p.uses-safety { margin: 6px 0 0; font-size: .82rem; }
 .mol-use p { margin: 6px 0 0; }
 .mol-use a { color: var(--accent); }
 .mol-use-head { display: flex; gap: 10px; align-items: center; }
+
+/* calculate it now */
+.calc-connect { display: flex; gap: 8px; margin-top: 8px; }
+.calc-connect input { flex: 1; min-width: 0; font: inherit; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.calc-status { margin-left: 10px; font-size: .86rem; }
+.calc-change { float: right; font-size: .8rem; }
+.calc-details summary { cursor: pointer; font-size: .88rem; }

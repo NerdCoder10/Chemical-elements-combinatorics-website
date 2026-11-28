@@ -205,6 +205,7 @@
     dft: ['q-dft', 'Computed (DFT)'],
     alex: ['q-dft', 'Computed (Alexandria DFT)'],
     calc: ['q-dft', 'Calculated for this site (DFT)'],
+    mlip: ['q-partial', 'Calculated now · approximation'],
   };
 
   const JARVIS_URL = (jid) => `https://www.ctcms.nist.gov/~knc6/jsmol/${jid}.html`;
@@ -244,8 +245,8 @@
   function reactionHTML(r, T) {
     const [qc, ql] = QUALITY[r.quality] || QUALITY.tabulated;
     const G = r.kind === 'nuclear' ? r.dH : Engine.gibbs(r.dH, r.dS, T);
-    const hEst = r.dft || r.quality === 'calc' ? '<div class="est">DFT, ≈ 0 K</div>' : '';
-    const sEst = r.dS == null && r.kind !== 'nuclear' && r.quality !== 'none' ? `<div class="est">${r.dft || r.quality === 'calc' ? 'not calculated' : 'not measured'}</div>` : '';
+    const hEst = r.dft || r.quality === 'calc' ? '<div class="est">DFT, ≈ 0 K</div>' : r.quality === 'mlip' ? '<div class="est">approximation, ≈ 0 K</div>' : '';
+    const sEst = r.dS == null && r.kind !== 'nuclear' && r.quality !== 'none' ? `<div class="est">${r.dft || r.quality === 'calc' || r.quality === 'mlip' ? 'not calculated' : 'not measured'}</div>` : '';
     const dSText = r.kind === 'nuclear' ? 'n/a' : fmtNum(r.dS, 1);
     const dHText = r.dH == null ? 'not tabulated' : fmtNum(r.dH, 1);
     let perMol = '';
@@ -390,7 +391,88 @@
     }
     const slot = $('#atlas-slot');
     if (!slot || token !== atlasToken) return;
-    slot.innerHTML = atlasHTML(syms, rec, T);
+    slot.innerHTML = `${atlasHTML(syms, rec, T)}${syms.length <= 4 ? '<div id="calc-slot"></div>' : ''}`;
+    if (syms.length <= 4) renderCalc(syms, T);
+  }
+
+  /* ---------- calculate it now (calculation server, server/) ---------- */
+
+  const calcServer = () => {
+    let s = '';
+    try { s = localStorage.getItem('calc-server') || ''; } catch (e) { /* storage blocked */ }
+    return (s || window.CALC_SERVER || '').replace(/\/+$/, '');
+  };
+  const calcResults = new Map();
+
+  function calcResultHTML(res, T) {
+    if (res.status === 'unsupported') return `<p class="rx-note">${esc(res.message)}</p>`;
+    const v = window.CALC_VALIDATION;
+    const accuracy = v ? ` Checked against measurements: formation enthalpies off by ${fmtNum(v.measured.mae_kJ_per_mol_atom, 0)} kJ/mol per atom on average for ${v.measured.n} known compounds; for ${v.pairs.n} element pairs with DFT results it agreed on whether a compound forms ${Math.round(v.pairs.forms_agreement * 100)}% of the time.` : '';
+    let html = '';
+    res.products.forEach((p) => {
+      const r = Engine.formationReaction({ formula: p.formula, phase: 's', dHf: p.dHf_kJ_per_mol, S: null, name: p.formula }, { quality: 'mlip' });
+      r.name = `${p.formula} (${p.spacegroup}), stable in this calculation`;
+      r.note = `Lowest-energy structure found: ${p.structure_type || p.spacegroup}, the best of ${p.trials} trial structures, all fully relaxed. It lies on the calculated convex hull (no mixture of the elements or simpler compounds is lower). Formation energy ${fmtNum(p.fe_eV_per_atom * Atlas.EV_TO_KJ, 0)} kJ/mol per atom. Calculated with ${res.method}. This is an approximation of DFT, not a measurement.${accuracy} ΔS and ΔG are left blank because only energies are calculated.`;
+      html += reactionHTML(r, T);
+    });
+    if (!res.products.length) {
+      const dec = res.decomposition.map((d) => fmtFormula(d.formula)).join(' + ');
+      html += `<div class="rx"><div class="rx-top"><div class="rx-name">No stable compound of all these elements found</div><span class="badge q-partial">Calculated now · approximation</span></div>
+        <p class="verdict">None of the ${res.tested.length} formulas tested is lower in energy than a mixture of ${dec && res.decomposition.some((d) => /[A-Z].*[A-Z]/.test(d.formula)) ? `simpler substances: <strong>${dec}</strong>` : 'the separate elements'}.</p>
+        <p class="rx-note">${esc(res.method)}.${esc(accuracy)}</p></div>`;
+    }
+    const rows = res.tested.map((t) => `<tr><td>${fmtFormula(t.formula)}</td><td>${esc(t.spacegroup || '')}</td><td class="num">${fmtNum(t.fe_eV_per_atom * Atlas.EV_TO_KJ, 0)}</td><td class="num">${t.e_above_hull.toFixed(3)}</td></tr>`).join('');
+    html += `<details class="rx calc-details"><summary>All ${res.tested.length} formulas tested (${res.cached ? 'from earlier calculation' : `${res.seconds} s`})</summary>
+      <div class="table-scroll"><table class="ctable"><thead><tr><th>Formula</th><th>Best structure</th><th class="num">ΔH<sub>f</sub> (kJ/mol per atom)</th><th class="num">Above hull (eV/atom)</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+    return html;
+  }
+
+  function renderCalc(syms, T) {
+    const slot = $('#calc-slot');
+    if (!slot) return;
+    const key = syms.slice().sort().join('-');
+    const server = calcServer();
+    const head = `<div class="section-head"><h3>Calculate it now <span class="badge q-partial">Approximation</span></h3>
+      <p>Runs a machine-learned potential, trained on 1.6 million quantum-mechanical calculations, on candidate crystal structures and finds which compounds are stable. About a minute for two elements, a few minutes for more.</p></div>`;
+    if (calcResults.has(key)) { slot.innerHTML = head + calcResultHTML(calcResults.get(key), T); return; }
+    if (!server) {
+      slot.innerHTML = `${head}<div class="rx"><p class="rx-note">No calculation server is connected. Enter the address of one (see <code>server/README.md</code> in the repository for how to run it).</p>
+        <div class="calc-connect"><input id="calc-url" type="url" placeholder="https://your-server.example" autocomplete="off"><button id="calc-save" class="btn primary">Connect</button></div></div>`;
+      $('#calc-save').addEventListener('click', () => {
+        try { localStorage.setItem('calc-server', $('#calc-url').value.trim()); } catch (e) { /* storage blocked */ }
+        renderCalc(syms, T);
+      });
+      return;
+    }
+    slot.innerHTML = `${head}<div class="rx"><button id="calc-go" class="btn primary">Calculate ${esc(syms.join(' + '))}</button>
+      <span id="calc-status" class="muted calc-status"></span>
+      <button id="calc-change" class="btn ghost calc-change">Change server</button></div>`;
+    $('#calc-change').addEventListener('click', () => {
+      try { localStorage.removeItem('calc-server'); } catch (e) { /* storage blocked */ }
+      renderCalc(syms, T);
+    });
+    // show a result instantly if the server already has one
+    fetch(`${server}/result?elements=${encodeURIComponent(key)}`).then((r) => (r.ok ? r.json() : null)).then((res) => {
+      if (res && res.status !== 'not_calculated' && $('#calc-slot') === slot) { calcResults.set(key, { ...res, cached: true }); slot.innerHTML = head + calcResultHTML(calcResults.get(key), T); }
+    }).catch(() => {});
+    $('#calc-go').addEventListener('click', async () => {
+      const status = $('#calc-status');
+      $('#calc-go').disabled = true;
+      const t0 = Date.now();
+      const tick = setInterval(() => { status.textContent = `Calculating… ${Math.round((Date.now() - t0) / 1000)} s`; }, 500);
+      try {
+        const r = await fetch(`${server}/calculate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ elements: syms }) });
+        const res = await r.json();
+        if (!r.ok) throw new Error(res.detail || `Server error ${r.status}`);
+        calcResults.set(key, res);
+        if ($('#calc-slot') === slot) slot.innerHTML = head + calcResultHTML(res, T);
+      } catch (err) {
+        status.textContent = `The calculation failed: ${err.message}. Check that the server at ${server} is running.`;
+        $('#calc-go').disabled = false;
+      } finally {
+        clearInterval(tick);
+      }
+    });
   }
 
   /* ---------- state ---------- */
