@@ -1,0 +1,1063 @@
+{
+ "measured": {
+  "n": 135,
+  "mae_kJ_per_mol_atom": 50.3,
+  "sign_agreement": 0.919,
+  "items": [
+   {
+    "formula": "C6H12O6",
+    "calc_kJ_atom": 43.0,
+    "measured_kJ_atom": -53.1
+   },
+   {
+    "formula": "NH4Cl",
+    "calc_kJ_atom": 64.8,
+    "measured_kJ_atom": -52.4
+   },
+   {
+    "formula": "NH4NO3",
+    "calc_kJ_atom": 69.5,
+    "measured_kJ_atom": -40.6
+   },
+   {
+    "formula": "SeO2",
+    "calc_kJ_atom": -17.2,
+    "measured_kJ_atom": -75.1
+   },
+   {
+    "formula": "P4O10",
+    "calc_kJ_atom": -173.5,
+    "measured_kJ_atom": -213.1
+   },
+   {
+    "formula": "H3PO4",
+    "calc_kJ_atom": -39.0,
+    "measured_kJ_atom": -160.6
+   },
+   {
+    "formula": "XeF2",
+    "calc_kJ_atom": -47.1,
+    "measured_kJ_atom": -54.7
+   },
+   {
+    "formula": "XeF4",
+    "calc_kJ_atom": -265.7,
+    "measured_kJ_atom": -52.3
+   },
+   {
+    "formula": "XeO3",
+    "calc_kJ_atom": 40.3,
+    "measured_kJ_atom": 100.5
+   },
+   {
+    "formula": "LiH",
+    "calc_kJ_atom": -43.2,
+    "measured_kJ_atom": -45.2
+   },
+   {
+    "formula": "LiF",
+    "calc_kJ_atom": -277.5,
+    "measured_kJ_atom": -308.0
+   },
+   {
+    "formula": "LiCl",
+    "calc_kJ_atom": -173.3,
+    "measured_kJ_atom": -204.3
+   },
+   {
+    "formula": "Li2O",
+    "calc_kJ_atom": -172.3,
+    "measured_kJ_atom": -199.3
+   },
+   {
+    "formula": "Li3N",
+    "calc_kJ_atom": -34.1,
+    "measured_kJ_atom": -41.1
+   },
+   {
+    "formula": "LiOH",
+    "calc_kJ_atom": -146.4,
+    "measured_kJ_atom": -162.5
+   },
+   {
+    "formula": "Li2CO3",
+    "calc_kJ_atom": -173.5,
+    "measured_kJ_atom": -202.7
+   },
+   {
+    "formula": "NaH",
+    "calc_kJ_atom": -21.1,
+    "measured_kJ_atom": -28.1
+   },
+   {
+    "formula": "NaF",
+    "calc_kJ_atom": -256.2,
+    "measured_kJ_atom": -288.3
+   },
+   {
+    "formula": "NaCl",
+    "calc_kJ_atom": -174.3,
+    "measured_kJ_atom": -205.6
+   },
+   {
+    "formula": "NaBr",
+    "calc_kJ_atom": -133.8,
+    "measured_kJ_atom": -180.6
+   },
+   {
+    "formula": "NaI",
+    "calc_kJ_atom": -120.8,
+    "measured_kJ_atom": -143.9
+   },
+   {
+    "formula": "Na2O",
+    "calc_kJ_atom": -112.7,
+    "measured_kJ_atom": -138.1
+   },
+   {
+    "formula": "Na2O2",
+    "calc_kJ_atom": -76.9,
+    "measured_kJ_atom": -127.7
+   },
+   {
+    "formula": "NaOH",
+    "calc_kJ_atom": -126.0,
+    "measured_kJ_atom": -141.9
+   },
+   {
+    "formula": "Na2S",
+    "calc_kJ_atom": -103.4,
+    "measured_kJ_atom": -121.6
+   },
+   {
+    "formula": "Na2CO3",
+    "calc_kJ_atom": -160.0,
+    "measured_kJ_atom": -188.5
+   },
+   {
+    "formula": "NaHCO3",
+    "calc_kJ_atom": -77.4,
+    "measured_kJ_atom": -158.5
+   },
+   {
+    "formula": "NaNO3",
+    "calc_kJ_atom": 64.1,
+    "measured_kJ_atom": -93.6
+   },
+   {
+    "formula": "Na2SO4",
+    "calc_kJ_atom": -165.9,
+    "measured_kJ_atom": -198.2
+   },
+   {
+    "formula": "KF",
+    "calc_kJ_atom": -255.4,
+    "measured_kJ_atom": -283.6
+   },
+   {
+    "formula": "KCl",
+    "calc_kJ_atom": -189.0,
+    "measured_kJ_atom": -218.2
+   },
+   {
+    "formula": "KBr",
+    "calc_kJ_atom": -153.0,
+    "measured_kJ_atom": -196.9
+   },
+   {
+    "formula": "KI",
+    "calc_kJ_atom": -143.9,
+    "measured_kJ_atom": -163.9
+   },
+   {
+    "formula": "KO2",
+    "calc_kJ_atom": -77.1,
+    "measured_kJ_atom": -95.0
+   },
+   {
+    "formula": "KOH",
+    "calc_kJ_atom": -127.0,
+    "measured_kJ_atom": -141.5
+   },
+   {
+    "formula": "KNO3",
+    "calc_kJ_atom": -91.0,
+    "measured_kJ_atom": -98.9
+   },
+   {
+    "formula": "K2CO3",
+    "calc_kJ_atom": -160.9,
+    "measured_kJ_atom": -191.8
+   },
+   {
+    "formula": "KClO3",
+    "calc_kJ_atom": -57.6,
+    "measured_kJ_atom": -79.5
+   },
+   {
+    "formula": "RbCl",
+    "calc_kJ_atom": -187.6,
+    "measured_kJ_atom": -217.7
+   },
+   {
+    "formula": "CsF",
+    "calc_kJ_atom": -249.5,
+    "measured_kJ_atom": -276.8
+   },
+   {
+    "formula": "CsCl",
+    "calc_kJ_atom": -190.7,
+    "measured_kJ_atom": -221.5
+   },
+   {
+    "formula": "BeO",
+    "calc_kJ_atom": -251.7,
+    "measured_kJ_atom": -304.7
+   },
+   {
+    "formula": "MgO",
+    "calc_kJ_atom": -255.6,
+    "measured_kJ_atom": -300.8
+   },
+   {
+    "formula": "MgF2",
+    "calc_kJ_atom": -322.8,
+    "measured_kJ_atom": -374.7
+   },
+   {
+    "formula": "MgCl2",
+    "calc_kJ_atom": -179.0,
+    "measured_kJ_atom": -213.8
+   },
+   {
+    "formula": "MgS",
+    "calc_kJ_atom": -135.6,
+    "measured_kJ_atom": -173.0
+   },
+   {
+    "formula": "Mg3N2",
+    "calc_kJ_atom": -54.3,
+    "measured_kJ_atom": -92.2
+   },
+   {
+    "formula": "Mg(OH)2",
+    "calc_kJ_atom": -166.8,
+    "measured_kJ_atom": -184.9
+   },
+   {
+    "formula": "MgCO3",
+    "calc_kJ_atom": -190.7,
+    "measured_kJ_atom": -219.2
+   },
+   {
+    "formula": "CaH2",
+    "calc_kJ_atom": -47.1,
+    "measured_kJ_atom": -60.5
+   },
+   {
+    "formula": "CaO",
+    "calc_kJ_atom": -281.3,
+    "measured_kJ_atom": -317.4
+   },
+   {
+    "formula": "CaF2",
+    "calc_kJ_atom": -357.8,
+    "measured_kJ_atom": -409.3
+   },
+   {
+    "formula": "CaCl2",
+    "calc_kJ_atom": -231.1,
+    "measured_kJ_atom": -265.1
+   },
+   {
+    "formula": "CaS",
+    "calc_kJ_atom": -208.5,
+    "measured_kJ_atom": -241.2
+   },
+   {
+    "formula": "CaC2",
+    "calc_kJ_atom": 1.4,
+    "measured_kJ_atom": -19.9
+   },
+   {
+    "formula": "Ca(OH)2",
+    "calc_kJ_atom": -182.8,
+    "measured_kJ_atom": -197.0
+   },
+   {
+    "formula": "CaCO3",
+    "calc_kJ_atom": -213.3,
+    "measured_kJ_atom": -241.5
+   },
+   {
+    "formula": "CaSO4",
+    "calc_kJ_atom": -199.8,
+    "measured_kJ_atom": -239.1
+   },
+   {
+    "formula": "SrO",
+    "calc_kJ_atom": -258.0,
+    "measured_kJ_atom": -296.0
+   },
+   {
+    "formula": "SrCl2",
+    "calc_kJ_atom": -234.2,
+    "measured_kJ_atom": -276.3
+   },
+   {
+    "formula": "BaO",
+    "calc_kJ_atom": -234.6,
+    "measured_kJ_atom": -274.0
+   },
+   {
+    "formula": "BaF2",
+    "calc_kJ_atom": -346.2,
+    "measured_kJ_atom": -402.4
+   },
+   {
+    "formula": "BaCl2",
+    "calc_kJ_atom": -236.0,
+    "measured_kJ_atom": -285.0
+   },
+   {
+    "formula": "BaCO3",
+    "calc_kJ_atom": -210.8,
+    "measured_kJ_atom": -242.6
+   },
+   {
+    "formula": "BaSO4",
+    "calc_kJ_atom": -207.1,
+    "measured_kJ_atom": -245.5
+   },
+   {
+    "formula": "B2O3",
+    "calc_kJ_atom": -108.5,
+    "measured_kJ_atom": -254.7
+   },
+   {
+    "formula": "BN",
+    "calc_kJ_atom": -125.1,
+    "measured_kJ_atom": -127.2
+   },
+   {
+    "formula": "Al2O3",
+    "calc_kJ_atom": -197.0,
+    "measured_kJ_atom": -335.1
+   },
+   {
+    "formula": "AlF3",
+    "calc_kJ_atom": -321.9,
+    "measured_kJ_atom": -377.6
+   },
+   {
+    "formula": "AlCl3",
+    "calc_kJ_atom": -146.4,
+    "measured_kJ_atom": -176.1
+   },
+   {
+    "formula": "AlN",
+    "calc_kJ_atom": -125.2,
+    "measured_kJ_atom": -159.0
+   },
+   {
+    "formula": "Al2S3",
+    "calc_kJ_atom": -246.2,
+    "measured_kJ_atom": -144.8
+   },
+   {
+    "formula": "SiO2",
+    "calc_kJ_atom": -229.3,
+    "measured_kJ_atom": -303.6
+   },
+   {
+    "formula": "SiC",
+    "calc_kJ_atom": 53.0,
+    "measured_kJ_atom": -32.6
+   },
+   {
+    "formula": "Si3N4",
+    "calc_kJ_atom": -108.5,
+    "measured_kJ_atom": -106.4
+   },
+   {
+    "formula": "GeO2",
+    "calc_kJ_atom": -132.1,
+    "measured_kJ_atom": -193.3
+   },
+   {
+    "formula": "Ga2O3",
+    "calc_kJ_atom": -148.3,
+    "measured_kJ_atom": -217.8
+   },
+   {
+    "formula": "In2O3",
+    "calc_kJ_atom": -136.3,
+    "measured_kJ_atom": -185.2
+   },
+   {
+    "formula": "SnO",
+    "calc_kJ_atom": -109.1,
+    "measured_kJ_atom": -140.3
+   },
+   {
+    "formula": "SnO2",
+    "calc_kJ_atom": -138.3,
+    "measured_kJ_atom": -192.5
+   },
+   {
+    "formula": "PbO",
+    "calc_kJ_atom": -95.4,
+    "measured_kJ_atom": -109.5
+   },
+   {
+    "formula": "PbO2",
+    "calc_kJ_atom": -70.5,
+    "measured_kJ_atom": -92.5
+   },
+   {
+    "formula": "PbS",
+    "calc_kJ_atom": -53.8,
+    "measured_kJ_atom": -50.2
+   },
+   {
+    "formula": "PbCl2",
+    "calc_kJ_atom": -112.0,
+    "measured_kJ_atom": -119.8
+   },
+   {
+    "formula": "PbI2",
+    "calc_kJ_atom": -63.9,
+    "measured_kJ_atom": -58.5
+   },
+   {
+    "formula": "As2O3",
+    "calc_kJ_atom": -86.7,
+    "measured_kJ_atom": -131.5
+   },
+   {
+    "formula": "Sb2O3",
+    "calc_kJ_atom": -338.4,
+    "measured_kJ_atom": -141.8
+   },
+   {
+    "formula": "Bi2O3",
+    "calc_kJ_atom": -102.4,
+    "measured_kJ_atom": -114.8
+   },
+   {
+    "formula": "TiO2",
+    "calc_kJ_atom": -274.0,
+    "measured_kJ_atom": -314.7
+   },
+   {
+    "formula": "TiN",
+    "calc_kJ_atom": -165.9,
+    "measured_kJ_atom": -168.9
+   },
+   {
+    "formula": "TiC",
+    "calc_kJ_atom": -81.0,
+    "measured_kJ_atom": -92.0
+   },
+   {
+    "formula": "V2O5",
+    "calc_kJ_atom": -100.4,
+    "measured_kJ_atom": -221.5
+   },
+   {
+    "formula": "Cr2O3",
+    "calc_kJ_atom": -88.0,
+    "measured_kJ_atom": -227.9
+   },
+   {
+    "formula": "MnO",
+    "calc_kJ_atom": -71.2,
+    "measured_kJ_atom": -192.6
+   },
+   {
+    "formula": "MnO2",
+    "calc_kJ_atom": -65.4,
+    "measured_kJ_atom": -173.3
+   },
+   {
+    "formula": "MnCl2",
+    "calc_kJ_atom": -106.5,
+    "measured_kJ_atom": -160.4
+   },
+   {
+    "formula": "FeO",
+    "calc_kJ_atom": 4.2,
+    "measured_kJ_atom": -136.0
+   },
+   {
+    "formula": "Fe2O3",
+    "calc_kJ_atom": 12.1,
+    "measured_kJ_atom": -164.8
+   },
+   {
+    "formula": "Fe3O4",
+    "calc_kJ_atom": -12.5,
+    "measured_kJ_atom": -159.8
+   },
+   {
+    "formula": "FeS",
+    "calc_kJ_atom": -99.1,
+    "measured_kJ_atom": -50.0
+   },
+   {
+    "formula": "FeS2",
+    "calc_kJ_atom": -81.7,
+    "measured_kJ_atom": -59.4
+   },
+   {
+    "formula": "FeCl2",
+    "calc_kJ_atom": -123.3,
+    "measured_kJ_atom": -113.9
+   },
+   {
+    "formula": "FeCl3",
+    "calc_kJ_atom": -64.8,
+    "measured_kJ_atom": -99.9
+   },
+   {
+    "formula": "CoO",
+    "calc_kJ_atom": -237.8,
+    "measured_kJ_atom": -119.0
+   },
+   {
+    "formula": "CoCl2",
+    "calc_kJ_atom": -52.3,
+    "measured_kJ_atom": -104.2
+   },
+   {
+    "formula": "NiO",
+    "calc_kJ_atom": 45.1,
+    "measured_kJ_atom": -119.8
+   },
+   {
+    "formula": "NiCl2",
+    "calc_kJ_atom": -58.1,
+    "measured_kJ_atom": -101.8
+   },
+   {
+    "formula": "CuO",
+    "calc_kJ_atom": -40.4,
+    "measured_kJ_atom": -78.7
+   },
+   {
+    "formula": "Cu2O",
+    "calc_kJ_atom": -13.4,
+    "measured_kJ_atom": -56.2
+   },
+   {
+    "formula": "CuS",
+    "calc_kJ_atom": -10.8,
+    "measured_kJ_atom": -26.6
+   },
+   {
+    "formula": "Cu2S",
+    "calc_kJ_atom": -8.5,
+    "measured_kJ_atom": -26.5
+   },
+   {
+    "formula": "CuCl",
+    "calc_kJ_atom": -37.2,
+    "measured_kJ_atom": -68.6
+   },
+   {
+    "formula": "CuCl2",
+    "calc_kJ_atom": -43.3,
+    "measured_kJ_atom": -73.4
+   },
+   {
+    "formula": "CuSO4",
+    "calc_kJ_atom": -92.5,
+    "measured_kJ_atom": -128.6
+   },
+   {
+    "formula": "ZnO",
+    "calc_kJ_atom": -119.6,
+    "measured_kJ_atom": -175.2
+   },
+   {
+    "formula": "ZnS",
+    "calc_kJ_atom": -58.3,
+    "measured_kJ_atom": -103.0
+   },
+   {
+    "formula": "ZnCl2",
+    "calc_kJ_atom": -311.3,
+    "measured_kJ_atom": -138.4
+   },
+   {
+    "formula": "ZnSO4",
+    "calc_kJ_atom": -120.7,
+    "measured_kJ_atom": -163.8
+   },
+   {
+    "formula": "ZrO2",
+    "calc_kJ_atom": -290.6,
+    "measured_kJ_atom": -366.9
+   },
+   {
+    "formula": "MoO3",
+    "calc_kJ_atom": -41.0,
+    "measured_kJ_atom": -186.3
+   },
+   {
+    "formula": "WO3",
+    "calc_kJ_atom": -28.3,
+    "measured_kJ_atom": -210.7
+   },
+   {
+    "formula": "Ag2O",
+    "calc_kJ_atom": 6.5,
+    "measured_kJ_atom": -10.4
+   },
+   {
+    "formula": "AgCl",
+    "calc_kJ_atom": -43.2,
+    "measured_kJ_atom": -63.5
+   },
+   {
+    "formula": "AgBr",
+    "calc_kJ_atom": -16.0,
+    "measured_kJ_atom": -50.2
+   },
+   {
+    "formula": "AgI",
+    "calc_kJ_atom": -23.5,
+    "measured_kJ_atom": -30.9
+   },
+   {
+    "formula": "Ag2S",
+    "calc_kJ_atom": -2.4,
+    "measured_kJ_atom": -10.9
+   },
+   {
+    "formula": "AgNO3",
+    "calc_kJ_atom": 12.9,
+    "measured_kJ_atom": -24.9
+   },
+   {
+    "formula": "AuCl3",
+    "calc_kJ_atom": -11.6,
+    "measured_kJ_atom": -29.4
+   },
+   {
+    "formula": "HgO",
+    "calc_kJ_atom": -8.9,
+    "measured_kJ_atom": -45.4
+   },
+   {
+    "formula": "HgS",
+    "calc_kJ_atom": -9.6,
+    "measured_kJ_atom": -29.1
+   },
+   {
+    "formula": "HgCl2",
+    "calc_kJ_atom": -53.3,
+    "measured_kJ_atom": -74.8
+   },
+   {
+    "formula": "Hg2Cl2",
+    "calc_kJ_atom": -49.9,
+    "measured_kJ_atom": -66.3
+   },
+   {
+    "formula": "CeO2",
+    "calc_kJ_atom": -304.8,
+    "measured_kJ_atom": -362.9
+   },
+   {
+    "formula": "UO2",
+    "calc_kJ_atom": -287.7,
+    "measured_kJ_atom": -361.7
+   },
+   {
+    "formula": "UF6",
+    "calc_kJ_atom": -313.0,
+    "measured_kJ_atom": -313.9
+   }
+  ]
+ },
+ "pairs": {
+  "n": 40,
+  "forms_agreement": 0.875,
+  "baseline": 0.65,
+  "median_seconds": 34.0,
+  "items": [
+   {
+    "pair": "Nd-Pb",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "NdPb",
+     "Nd2Pb",
+     "NdPb3"
+    ],
+    "seconds": 34.0
+   },
+   {
+    "pair": "Cu-Os",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 65.1
+   },
+   {
+    "pair": "Rb-Y",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 41.1
+   },
+   {
+    "pair": "In-Sr",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "SrIn2",
+     "SrIn",
+     "SrIn3",
+     "Sr2In",
+     "Sr3In"
+    ],
+    "seconds": 30.0
+   },
+   {
+    "pair": "Hf-Li",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 56.9
+   },
+   {
+    "pair": "I-Sm",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "SmI3",
+     "SmI2"
+    ],
+    "seconds": 11.9
+   },
+   {
+    "pair": "Gd-Pm",
+    "alexandria_stable": true,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 29.3
+   },
+   {
+    "pair": "Co-Tm",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "TmCo",
+     "TmCo2",
+     "Tm3Co"
+    ],
+    "seconds": 37.4
+   },
+   {
+    "pair": "Fe-Hf",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "HfFe2",
+     "HfFe",
+     "Hf3Fe"
+    ],
+    "seconds": 34.8
+   },
+   {
+    "pair": "Al-Si",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 31.6
+   },
+   {
+    "pair": "Gd-Sb",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "GdSb"
+    ],
+    "seconds": 3.1
+   },
+   {
+    "pair": "Li-Mn",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 53.4
+   },
+   {
+    "pair": "Bi-Ho",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "HoBi"
+    ],
+    "seconds": 31.1
+   },
+   {
+    "pair": "Hf-Th",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 38.6
+   },
+   {
+    "pair": "Ba-Nd",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 30.2
+   },
+   {
+    "pair": "P-Ta",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "Ta3P5"
+    ],
+    "seconds": 25.8
+   },
+   {
+    "pair": "Cs-Zn",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "CsZn3"
+    ],
+    "seconds": 32.5
+   },
+   {
+    "pair": "Ca-Cs",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 20.9
+   },
+   {
+    "pair": "Al-Sb",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "AlSb"
+    ],
+    "seconds": 4.8
+   },
+   {
+    "pair": "Er-Ga",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "ErGa",
+     "ErGa2",
+     "ErGa3",
+     "Er2Ga"
+    ],
+    "seconds": 34.7
+   },
+   {
+    "pair": "Ga-Ho",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "HoGa",
+     "HoGa2",
+     "HoGa3",
+     "Ho2Ga"
+    ],
+    "seconds": 30.0
+   },
+   {
+    "pair": "I-O",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "I2O5"
+    ],
+    "seconds": 59.2
+   },
+   {
+    "pair": "Pu-Sr",
+    "alexandria_stable": false,
+    "calc_stable": true,
+    "products": [
+     "SrPu2"
+    ],
+    "seconds": 38.4
+   },
+   {
+    "pair": "Gd-Sc",
+    "alexandria_stable": false,
+    "calc_stable": true,
+    "products": [
+     "GdSc2"
+    ],
+    "seconds": 38.0
+   },
+   {
+    "pair": "Mg-Ru",
+    "alexandria_stable": true,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 53.3
+   },
+   {
+    "pair": "Ba-In",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "BaIn2",
+     "BaIn",
+     "BaIn4",
+     "Ba3In"
+    ],
+    "seconds": 41.7
+   },
+   {
+    "pair": "Sn-Sr",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "SrSn",
+     "Sr2Sn",
+     "SrSn2",
+     "Sr3Sn",
+     "SrSn3"
+    ],
+    "seconds": 25.1
+   },
+   {
+    "pair": "Mo-Nb",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "Nb2Mo",
+     "NbMo",
+     "NbMo2",
+     "Nb4Mo",
+     "NbMo3"
+    ],
+    "seconds": 38.3
+   },
+   {
+    "pair": "La-Ru",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "La2Ru",
+     "La3Ru"
+    ],
+    "seconds": 43.1
+   },
+   {
+    "pair": "Ir-Na",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 41.2
+   },
+   {
+    "pair": "Cu-H",
+    "alexandria_stable": true,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 15.4
+   },
+   {
+    "pair": "Eu-Sm",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 28.7
+   },
+   {
+    "pair": "Ga-N",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "GaN"
+    ],
+    "seconds": 8.0
+   },
+   {
+    "pair": "O-Tl",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "Tl2O",
+     "Tl2O3"
+    ],
+    "seconds": 27.6
+   },
+   {
+    "pair": "Ru-Tl",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 44.6
+   },
+   {
+    "pair": "Mo-Nd",
+    "alexandria_stable": false,
+    "calc_stable": false,
+    "products": [],
+    "seconds": 33.3
+   },
+   {
+    "pair": "In-Li",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "LiIn",
+     "Li2In",
+     "Li3In",
+     "Li4In",
+     "LiIn3"
+    ],
+    "seconds": 43.3
+   },
+   {
+    "pair": "Eu-In",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "EuIn2",
+     "EuIn",
+     "EuIn3",
+     "Eu2In"
+    ],
+    "seconds": 27.5
+   },
+   {
+    "pair": "S-Sn",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "SnS",
+     "SnS2"
+    ],
+    "seconds": 27.3
+   },
+   {
+    "pair": "B-Mo",
+    "alexandria_stable": true,
+    "calc_stable": true,
+    "products": [
+     "BMo",
+     "B2Mo",
+     "BMo3"
+    ],
+    "seconds": 71.1
+   }
+  ]
+ },
+ "seconds": 3932
+}
